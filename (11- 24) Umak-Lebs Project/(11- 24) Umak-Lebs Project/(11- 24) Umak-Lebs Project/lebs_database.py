@@ -1,3 +1,4 @@
+import os
 import mysql.connector
 from mysql.connector import Error
 
@@ -6,12 +7,13 @@ from mysql.connector import Error
 # -----------------------------------------------------------------
 def get_db_connection():
     try:
+        # Prefer environment variables so deployments can set credentials via env
         conn = mysql.connector.connect(
-            host="localhost",
-            user="root",              # Change this if using another MySQL user
-            password="", # Change this to your MySQL password
-            database="umak_lebs",      # Ensure this database exists
-            port=3306
+            host=os.getenv('MYSQL_HOST', 'localhost'),
+            user=os.getenv('MYSQL_USER', 'root'),
+            password=os.getenv('MYSQL_PASS', ''),
+            database=os.getenv('MYSQL_DB', 'umak_lebs'),
+            port=int(os.getenv('MYSQL_PORT', 3306))
         )
         return conn
     except Error as e:

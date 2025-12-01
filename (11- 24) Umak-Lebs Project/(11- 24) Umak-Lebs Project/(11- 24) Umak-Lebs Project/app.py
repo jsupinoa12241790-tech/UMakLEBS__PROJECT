@@ -2,6 +2,7 @@
 # IMPORTS
 # -----------------------------------------------------------------
 # Flask framework and extensions
+
 from flask import (
     Flask, flash, render_template, request,
     session, redirect, url_for, jsonify, send_file
@@ -67,8 +68,10 @@ from lebs_database import get_db_connection, fill_inventory, init_db  # Import h
 # FLASK APP INITIALIZATION
 # -----------------------------------------------------------------
 app = Flask(__name__)
-app.secret_key = "your_secret_key_here"  # Use a strong random key in production
+app.secret_key = os.getenv('SECRET_KEY', 'dev_default_secret')  # Use env var in production
 socketio = SocketIO(app, cors_allowed_origins="*")  # Allow SocketIO for live updates
+# Expose WSGI callable expected by hosts (e.g. Railway / WSGI loaders)
+application = app
 # -----------------------------------------------------------------
 # IMAGE UPLOAD SETTINGS
 # -----------------------------------------------------------------
@@ -1178,6 +1181,11 @@ def register_borrower():
         conn.close()
 
     return redirect(url_for('borrow_page'))
+
+
+@app.route("/hello")
+def hello():
+    return "Hello, your Flask app is working!"
 
 # -----------------------------------------------------------------
 # FUNCTION: Generate Borrow Slip PDF
@@ -3694,3 +3702,7 @@ if __name__ == "__main__":
 
     # Start the Flask-SocketIO app *after* the database setup
     socketio.run(app, debug=True)
+
+
+
+
