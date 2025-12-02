@@ -414,6 +414,43 @@ def send_verification_email(receiver_email, code):
     msg["From"] = smtp_user or f"no-reply@{os.getenv('APP_DOMAIN','localhost')}"
     msg["To"] = receiver_email
 
+    # If SendGrid API key is provided, prefer API delivery (works on Railway)
+    sendgrid_key = os.getenv("SENDGRID_API_KEY")
+    if sendgrid_key:
+        try:
+            import requests
+        except Exception as ie:
+            print(f"⚠️ SendGrid requested but 'requests' isn't available: {ie}. Falling back to SMTP/console.")
+            sendgrid_key = None
+        
+        sg_url = "https://api.sendgrid.com/v3/mail/send"
+        payload = {
+            "personalizations": [{
+                "to": [{"email": receiver_email}],
+                "subject": msg["Subject"]
+            }],
+            "from": {"email": msg["From"], "name": os.getenv("APP_NAME", "UMak-LEBS")},
+            "content": [{"type": "text/plain", "value": message_body.strip()}]
+        }
+        headers = {
+            "Authorization": f"Bearer {sendgrid_key}",
+            "Content-Type": "application/json"
+        }
+        max_retries = int(os.getenv("EMAIL_MAX_RETRIES", 3))
+        for attempt in range(1, max_retries + 1):
+            try:
+                r = requests.post(sg_url, json=payload, headers=headers, timeout=smtp_timeout)
+                if r.status_code in (200, 202):
+                    print("✅ Verification email sent via SendGrid")
+                    return True
+                else:
+                    print(f"❌ SendGrid failed (status {r.status_code}): {r.text}")
+            except Exception as e:
+                print(f"❌ SendGrid error (attempt {attempt}/{max_retries}): {type(e).__name__}: {e}")
+            if attempt < max_retries:
+                time_module.sleep(min(5, attempt * 1))
+        return False
+
     # Allow a console backend for development or when SMTP is blocked
     if smtp_backend == "console":
         print(f"[EMAIL-DRY-RUN] To: {receiver_email} -- Code: {code}")
