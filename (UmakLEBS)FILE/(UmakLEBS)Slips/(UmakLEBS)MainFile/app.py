@@ -9,6 +9,7 @@ from flask import (
 )
 from flask_socketio import SocketIO  # Real-time communication (for notifications, etc.)
 import bcrypt  # Secure password hashing
+import requests
 from werkzeug.utils import secure_filename  # For safe file uploads
 from werkzeug.security import check_password_hash as werk_check_password_hash
 from functools import wraps  # Used for login-required decorators
@@ -386,95 +387,49 @@ def verify_otp():
 # SEND VERIFICATION EMAIL
 # -----------------------------------------------------------------
 def send_verification_email(receiver_email, code):
-    # Configurable email settings via environment
-    smtp_backend = os.getenv("EMAIL_BACKEND", "smtp").lower()  # 'smtp' or 'console'
-    smtp_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-    smtp_port = int(os.getenv("EMAIL_PORT", 587))
-    smtp_user = os.getenv("EMAIL_USER")
-    smtp_pass = os.getenv("EMAIL_PASS")
-    smtp_use_tls = os.getenv("EMAIL_USE_TLS", "true").lower() in ("1", "true", "yes")
-    smtp_timeout = float(os.getenv("EMAIL_TIMEOUT", 10.0))
+    # SendGrid-only simple implementation (Railway-friendly)
+    api_key = os.getenv("SENDGRID_API_KEY")
+    sender_email = os.getenv("SENDGRID_SENDER", "noreply@umaklebs.com")
 
     message_body = f"""
     Dear User,
 
-    We received a request to verify your account for the University of Makati Laboratory Equipment Borrowing System (UMak-LEBS).
-
-    Your verification code is: {code}
+    Your UMak-LEBS verification code is: {code}
 
     Please enter this code in the verification field to proceed.
     For your security, do not share this code with anyone.
 
     Best regards,
     UMak-LEBS Support Team
-    University of Makati
     """
-    msg = MIMEText(message_body.strip())
-    msg["Subject"] = "UMak-LEBS Account Verification Code"
-    msg["From"] = smtp_user or f"no-reply@{os.getenv('APP_DOMAIN','localhost')}"
-    msg["To"] = receiver_email
 
-    # If SendGrid API key is provided, prefer API delivery (works on Railway)
-    sendgrid_key = os.getenv("SENDGRID_API_KEY")
-    if sendgrid_key:
-        try:
-            import requests
-        except Exception as ie:
-            print(f"⚠️ SendGrid requested but 'requests' isn't available: {ie}. Falling back to SMTP/console.")
-            sendgrid_key = None
-        
-        sg_url = "https://api.sendgrid.com/v3/mail/send"
-        payload = {
-            "personalizations": [{
-                "to": [{"email": receiver_email}],
-                "subject": msg["Subject"]
-            }],
-            "from": {"email": msg["From"], "name": os.getenv("APP_NAME", "UMak-LEBS")},
-            "content": [{"type": "text/plain", "value": message_body.strip()}]
-        }
+    data = {
+        "personalizations": [{
+            "to": [{"email": receiver_email}],
+            "subject": "UMak-LEBS Account Verification Code"
+        }],
+        "from": {"email": sender_email},
+        "content": [{
+            "type": "text/plain",
+            "value": message_body.strip()
+        }]
+    }
+
+    try:
         headers = {
-            "Authorization": f"Bearer {sendgrid_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        max_retries = int(os.getenv("EMAIL_MAX_RETRIES", 3))
-        for attempt in range(1, max_retries + 1):
-            try:
-                r = requests.post(sg_url, json=payload, headers=headers, timeout=smtp_timeout)
-                if r.status_code in (200, 202):
-                    print("✅ Verification email sent via SendGrid")
-                    return True
-                else:
-                    print(f"❌ SendGrid failed (status {r.status_code}): {r.text}")
-            except Exception as e:
-                print(f"❌ SendGrid error (attempt {attempt}/{max_retries}): {type(e).__name__}: {e}")
-            if attempt < max_retries:
-                time_module.sleep(min(5, attempt * 1))
-        return False
-
-    # Allow a console backend for development or when SMTP is blocked
-    if smtp_backend == "console":
-        print(f"[EMAIL-DRY-RUN] To: {receiver_email} -- Code: {code}")
-        return True
-
-    max_retries = int(os.getenv("EMAIL_MAX_RETRIES", 3))
-    for attempt in range(1, max_retries + 1):
-        try:
-            # pass timeout to SMTP constructor to avoid hanging on DNS or connect
-            with smtplib.SMTP(host=smtp_host, port=smtp_port, timeout=smtp_timeout) as server:
-                if smtp_use_tls:
-                    server.starttls()
-                if smtp_user and smtp_pass:
-                    server.login(smtp_user, smtp_pass)
-                server.sendmail(msg["From"], [receiver_email], msg.as_string())
-            print("✅ Verification email sent successfully")
+        resp = requests.post("https://api.sendgrid.com/v3/mail/send", headers=headers, json=data, timeout=10)
+        if resp.status_code == 202:
+            print("✅ Verification email sent successfully via SendGrid")
             return True
-        except Exception as e:
-            # Provide clearer logging and include backend details
-            print(f"❌ Error sending email (attempt {attempt}/{max_retries}) to {receiver_email} via {smtp_host}:{smtp_port} - {type(e).__name__}: {e}")
-            if attempt < max_retries:
-                time_module.sleep(min(5, attempt * 1))  # small backoff
-            else:
-                return False
+        else:
+            print(f"❌ SendGrid error: {resp.status_code}, {resp.text}")
+            return False
+    except Exception as e:
+        print(f"❌ SendGrid request failed: {type(e).__name__}: {e}")
+        return False
 
 # -----------------------------------------------------------------
 # GENERATE 6-DIGIT CODE
