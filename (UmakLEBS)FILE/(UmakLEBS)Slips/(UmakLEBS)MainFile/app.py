@@ -121,6 +121,9 @@ def login_page():
 
         # Connect to MySQL
         conn = get_db_connection()
+        if not conn:
+            flash("⚠️ Database connection failed. Please ensure your MySQL credentials are set in .env or the environment.", "error")
+            return redirect(url_for("login_page"))
         cursor = conn.cursor()
 
         # Fetch admin record based on email
@@ -142,6 +145,9 @@ def login_page():
 
         # Store OTP in the database
         conn = get_db_connection()
+        if not conn:
+            flash("⚠️ Database connection failed. Please ensure your MySQL credentials are set in .env or the environment.", "error")
+            return redirect(url_for("login_page"))
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE admins SET otp = %s, otp_expiry = %s WHERE admin_id = %s",
@@ -178,6 +184,8 @@ def login_step1():
     password = data.get('password')
 
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database connection failed. Please contact the administrator.'})
     cur = conn.cursor(dictionary=True)
     cur.execute("SELECT * FROM admins WHERE email = %s", (email,))
     admin = cur.fetchone()
@@ -296,6 +304,9 @@ def verify_otp():
         return redirect(url_for("login_page"))
 
     conn = get_db_connection()
+    if not conn:
+        flash("⚠️ Database connection failed. Please ensure your MySQL service is running and credentials are set.", "error")
+        return redirect(url_for("login_page"))
     cursor = conn.cursor()
     cursor.execute("SELECT admin_id, otp, otp_expiry, first_name, last_name FROM admins WHERE email=%s", (email,))
     user = cursor.fetchone()
@@ -3701,7 +3712,11 @@ if __name__ == "__main__":
 
 
     # Start the Flask-SocketIO app *after* the database setup
-    socketio.run(app, debug=True)
+    host = os.getenv('HOST', '0.0.0.0')
+    port = int(os.getenv('PORT', 8080))
+    debug = os.getenv('DEBUG', 'False').lower() in ("1", "true", "yes")
+    print(f"Starting app on {host}:{port} (debug={debug})")
+    socketio.run(app, host=host, port=port, debug=debug)
 
 
 
