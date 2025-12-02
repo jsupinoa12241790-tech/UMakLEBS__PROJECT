@@ -1,4 +1,4 @@
-0blinker==1.7.0
+blinker==1.7.0
 click==8.1.7
 Flask==3.0.2
 Flask-Scss==0.5
