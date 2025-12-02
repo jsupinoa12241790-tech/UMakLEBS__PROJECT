@@ -43,6 +43,7 @@ import matplotlib
 matplotlib.use('Agg')  # Non-GUI backend (for servers)
 import matplotlib.pyplot as plt  # For plotting charts
 from builtins import zip
+import requests
 
 # ReportLab (used for generating PDF reports)
 from reportlab.lib.pagesizes import A4, landscape
@@ -387,67 +388,78 @@ def verify_otp():
 # SEND VERIFICATION EMAIL
 # -----------------------------------------------------------------
 def send_verification_email(receiver_email, code):
-    # Resend.com implementation (uses REST API) — Railway-friendly
+    # Primary: POST to Pipedream webhook (if configured)
+    webhook_url = os.getenv("PIPEDREAM_WEBHOOK_URL") or os.getenv("PIPEDREAM_URL") or os.getenv("PIPEDREAM_WEBHOOK")
+
+    if webhook_url:
+        payload = {"email": receiver_email, "code": code}
+        try:
+            resp = requests.post(webhook_url, json=payload, timeout=10)
+            if resp.status_code == 200:
+                print("✅ Email relay successful via Pipedream webhook")
+                return True
+            else:
+                print(f"❌ Relay failed: {resp.status_code} - {resp.text}")
+                # don't immediately return; fall back to Resend or console below
+        except Exception as e:
+            print(f"❌ Relay exception: {type(e).__name__}: {e}")
+
+    # Secondary: Resend.com API (if configured)
     api_key = os.getenv("RESEND_API_KEY")
     sender_email = os.getenv("RESEND_SENDER", "noreply@umaklebs.com")
 
-    message_body = f"""
-    Dear User,
+    if api_key:
+        message_body = f"""
+        Dear User,
 
-    Your UMak-LEBS verification code is: {code}
+        Your UMak-LEBS verification code is: {code}
 
-    Please enter this code in the verification field to proceed.
-    For your security, do not share this code with anyone.
+        Please enter this code in the verification field to proceed.
+        For your security, do not share this code with anyone.
 
-    Best regards,
-    UMak-LEBS Support Team
-    """
+        Best regards,
+        UMak-LEBS Support Team
+        """
 
-    data = {
-        "from": sender_email,
-        "to": [receiver_email],
-        "subject": "UMak-LEBS Account Verification Code",
-        "text": message_body.strip()
-    }
-
-    if not api_key:
-        print("❌ RESEND_API_KEY not configured. Skipping email send.")
-        return False
-
-    try:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
+        data = {
+            "from": sender_email,
+            "to": [receiver_email],
+            "subject": "UMak-LEBS Account Verification Code",
+            "text": message_body.strip()
         }
-        resp = requests.post(
-            "https://api.resend.com/emails",
-            headers=headers,
-            json=data,
-            timeout=10
-        )
 
-        if resp.status_code in (200, 202):
-            print("✅ Verification email sent via Resend")
-            return True
-        else:
-            print(f"❌ Resend error: {resp.status_code} - {resp.text}")
-            return False
+        try:
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            resp = requests.post(
+                "https://api.resend.com/emails",
+                headers=headers,
+                json=data,
+                timeout=10
+            )
 
-    except Exception as e:
-        # Helpful debug output for DNS/connectivity issues
-        print(f"❌ Resend request failed: {type(e).__name__}: {e}")
-
-        # If the deployment cannot make outbound DNS/HTTP requests (common on some hosts),
-        # allow a console fallback for development/testing. Set EMAIL_BACKEND=console to enable.
-        email_backend = os.getenv("EMAIL_BACKEND", "").lower()
-        if email_backend == "console":
-            try:
-                print(f"[console fallback] Verification code for {receiver_email}: {code}")
+            if resp.status_code in (200, 202):
+                print("✅ Verification email sent via Resend")
                 return True
-            except Exception:
-                pass
+            else:
+                print(f"❌ Resend error: {resp.status_code} - {resp.text}")
+                # fall through to console fallback
 
-        return False
+        except Exception as e:
+            print(f"❌ Resend request failed: {type(e).__name__}: {e}")
+
+    # Final fallback: console backend
+    email_backend = os.getenv("EMAIL_BACKEND", "").lower()
+    if email_backend == "console":
+        try:
+            print(f"[console fallback] Verification code for {receiver_email}: {code}")
+            return True
+        except Exception:
+            pass
+
+    return False
 
 # -----------------------------------------------------------------
 # GENERATE 6-DIGIT CODE
