@@ -95,7 +95,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS transactions (
             borrow_id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
-            admin_id INT NOT NULL,
+            admin_id INT,
             instructor_id INT NOT NULL,
             instructor_rfid VARCHAR(50) NOT NULL,
             subject VARCHAR(100) NOT NULL,

@@ -553,7 +553,7 @@ def verification(email):
             flash("❌ Invalid or expired verification code.", "error")
             return redirect(url_for("verification", email=email))
 
-    return render_template("verification.html", email=email)
+    return render_template("Verification.html", email=email)
 
 # -------------------------------------------------
 # ROUTE: Resend Verification Code

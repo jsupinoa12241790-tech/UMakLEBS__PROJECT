@@ -10,6 +10,7 @@ from flask import (
 from flask_socketio import SocketIO  # Real-time communication (for notifications, etc.)
 import bcrypt  # Secure password hashing
 from werkzeug.utils import secure_filename  # For safe file uploads
+from werkzeug.security import check_password_hash as werk_check_password_hash
 from functools import wraps  # Used for login-required decorators
 
 # ----------------------------------------------
@@ -93,6 +94,27 @@ def login_required(f):
             return redirect(url_for('login_page'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+# Password verification helper (support bcrypt and Werkzeug hashed formats)
+def verify_password(plain_password, stored_hash):
+    if not stored_hash:
+        return False
+    try:
+        # bcrypt hashed passwords start with $2a$, $2b$, or $2y$
+        if isinstance(stored_hash, str) and (stored_hash.startswith("$2a$") or stored_hash.startswith("$2b$") or stored_hash.startswith("$2y$")):
+            return bcrypt.checkpw(plain_password.encode('utf-8'), stored_hash.encode('utf-8'))
+    except Exception:
+        pass
+    # Fallback to werkzeug's check (supports scrypt and others)
+    try:
+        return werk_check_password_hash(stored_hash, plain_password)
+    except Exception:
+        # Last resort try bcrypt again
+        try:
+            return bcrypt.checkpw(plain_password.encode('utf-8'), stored_hash.encode('utf-8'))
+        except Exception:
+            return False
 #-----------------------------------------------------------------
 # DEFAULT IMAGE IN INVENTORY
 #-----------------------------------------------------------------
@@ -135,7 +157,7 @@ def login_page():
         conn.close()
 
         # Check credentials
-        if not user or not bcrypt.checkpw(password.encode('utf-8'), user[1].encode('utf-8')):
+        if not user or not verify_password(password, user[1]):
             flash("❌ Invalid credentials", "error")
             return redirect(url_for("login_page"))
 
@@ -194,7 +216,7 @@ def login_step1():
     if not admin:
         conn.close()
         return jsonify({'success': False, 'error': 'Account not found. Please craete an account.'})
-    if not bcrypt.checkpw(password.encode(), admin['password'].encode()):
+    if not verify_password(password, admin['password']):
         conn.close()
         return jsonify({'success': False, 'error': 'Incorrect password.'})
 
@@ -477,10 +499,18 @@ def create_account():
             now = datetime.now(ph_time).strftime("%Y-%m-%d %H:%M:%S")
 
             try:
-                cursor.execute("""
-                    INSERT INTO pending_admins (first_name, last_name, email, password, verification_code, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (fname, lname, email, hashed, code, now))
+                cursor.execute("SELECT pending_id FROM pending_admins WHERE email = %s", (email,))
+                pending_row = cursor.fetchone()
+                if pending_row:
+                    cursor.execute(
+                        "UPDATE pending_admins SET password=%s, verification_code=%s, created_at=%s WHERE email=%s",
+                        (hashed, code, now, email)
+                    )
+                else:
+                    cursor.execute("""
+                        INSERT INTO pending_admins (first_name, last_name, email, password, verification_code, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (fname, lname, email, hashed, code, now))
                 conn.commit()
             except Error as e:
                 # Table missing => attempt to initialize DB and retry once
@@ -583,7 +613,7 @@ def verification(email):
             flash("❌ Invalid or expired verification code.", "error")
             return redirect(url_for("verification", email=email))
 
-    return render_template("verification.html", email=email)
+    return render_template("Verification.html", email=email)
 
 # -------------------------------------------------
 # ROUTE: Resend Verification Code
