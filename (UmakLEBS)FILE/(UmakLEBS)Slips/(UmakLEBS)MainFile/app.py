@@ -388,62 +388,25 @@ def verify_otp():
 # SEND VERIFICATION EMAIL
 # -----------------------------------------------------------------
 def send_verification_email(receiver_email, code):
-    # Try Pipedream webhook first. Prefer environment variable, fallback to previous hardcoded URL.
+    # Simple relay to a Render/relay endpoint. Prefer env var `PIPEDREAM_WEBHOOK_URL`
+    # (or `PIPEDREAM_URL`/`PIPEDREAM_WEBHOOK`) and fall back to a configured Render URL.
     webhook_url = os.getenv("PIPEDREAM_WEBHOOK_URL") or os.getenv("PIPEDREAM_URL") or os.getenv("PIPEDREAM_WEBHOOK")
     if not webhook_url:
-        webhook_url = "https://eo9n6xj3z5p3p3.m.pipedream.net"
+        webhook_url = os.getenv("RELAY_URL") or "https://your-render-url.onrender.com"
 
     payload = {"email": receiver_email, "code": code}
 
-    # Attempt webhook relay
     try:
-        resp = requests.post(webhook_url, json=payload, timeout=10)
-        if resp.status_code == 200:
-            print("✅ Email relay successful via webhook")
+        response = requests.post(webhook_url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print("✅ Email relay successful")
             return True
         else:
-            print(f"❌ Relay failed: {resp.status_code} - {resp.text}")
-            # continue to fallback options
+            print(f"❌ Relay failed: {response.status_code} - {response.text}")
+            return False
     except Exception as e:
-        print(f"❌ Relay exception: {type(e).__name__}: {e}")
-
-    # Fallback #1: Resend API if configured
-    api_key = os.getenv("RESEND_API_KEY")
-    sender_email = os.getenv("RESEND_SENDER", "noreply@umaklebs.com")
-    if api_key:
-        message_body = f"""
-        Dear User,
-
-        Your UMak-LEBS verification code is: {code}
-
-        Please enter this code in the verification field to proceed.
-        For your security, do not share this code with anyone.
-
-        Best regards,
-        UMak-LEBS Support Team
-        """
-        data = {"from": sender_email, "to": [receiver_email], "subject": "UMak-LEBS Account Verification Code", "text": message_body.strip()}
-        try:
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            r = requests.post("https://api.resend.com/emails", headers=headers, json=data, timeout=10)
-            if r.status_code in (200, 202):
-                print("✅ Verification email sent via Resend")
-                return True
-            else:
-                print(f"❌ Resend error: {r.status_code} - {r.text}")
-        except Exception as e:
-            print(f"❌ Resend request failed: {type(e).__name__}: {e}")
-
-    # Final fallback: console backend
-    email_backend = os.getenv("EMAIL_BACKEND", "").lower()
-    if email_backend == "console":
-        try:
-            print(f"[console fallback] Verification code for {receiver_email}: {code}")
-            return True
-        except Exception:
-            pass
-
-    return False
+        print(f"❌ Relay exception: {e}")
+        return False
 
 # -----------------------------------------------------------------
 # GENERATE 6-DIGIT CODE
