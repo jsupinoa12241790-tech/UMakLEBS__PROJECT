@@ -3700,23 +3700,7 @@ def kiosk_return_success():
 # MAIN ENTRY POINT
 # -----------------------------------------------------------------
 if __name__ == "__main__":
-    print("Initializing database...")
-    init_db()
-    
-    print("Filling inventory data...")
-    fill_inventory()
-    print("✅ Inventory successfully synced to MySQL!")
-
-    app_root = r"C:\Users\johna\Downloads\(11- 19) Umak-Lebs Project"
-    print(os.path.isfile(os.path.join(app_root, "static", "uploads", "Flathead_Wrench.jpg")))
-
-
-    # Start the Flask-SocketIO app *after* the database setup
-    host = os.getenv('HOST', '0.0.0.0')
-    port = int(os.getenv('PORT', 8080))
-    debug = os.getenv('DEBUG', 'False').lower() in ("1", "true", "yes")
-    print(f"Starting app on {host}:{port} (debug={debug})")
-    socketio.run(app, host=host, port=port, debug=debug)
+    socketio.run(app, host="0.0.0.0", port=8080)
 
 
 

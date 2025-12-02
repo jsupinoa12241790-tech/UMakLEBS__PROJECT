@@ -59,6 +59,28 @@ Notes:
 - The `get_db_connection()` in `lebs_database.py` reads `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASS`, `MYSQL_DB`, and `MYSQL_PORT` from environment variables.
 - First-time deploy: run the `init_db()` endpoint manually or run the app locally to initialize tables.
 
+## Running locally
+
+- Install dependencies:
+
+```powershell
+pip install -r requirements.txt
+```
+
+- Create a `.env` file based on `.env.example` and set `MYSQL_USER`, `MYSQL_PASS`, and `MYSQL_DB`.
+
+- Run the app directly (uses `SocketIO` with fallback to Flask config):
+
+```powershell
+python app.py
+```
+
+- Alternatively, use an explicit port (Railway port default) locally:
+
+```powershell
+#$env:PORT = 8080; python app.py
+```
+
 ## Debugging
 - Tail the logs on Railway if you see import errors or issues. If you see `ModuleNotFoundError`, re-check `requirements.txt`.
 - If emails fail, confirm SMTP credentials and that less-secure app access is permitted for SMTP provider.
