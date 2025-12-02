@@ -135,7 +135,7 @@ def login_page():
         conn.close()
 
         # Check credentials
-        if not user or not bcrypt.checkpw(password.encode('utf-8'), user[1].encode('utf-8')):
+        if not user or not check_password_hash(user[1], password):
             flash("❌ Invalid credentials", "error")
             return redirect(url_for("login_page"))
 
@@ -2852,13 +2852,13 @@ def update_admin_account():
         return jsonify(success=False, error="Admin not found.")
 
     # Verify current password
-    if not bcrypt.checkpw(current_password.encode('utf-8'), admin[0].encode('utf-8')):
+    if not check_password_hash(admin[0], current_password):
         conn.close()
         return jsonify(success=False, error="Incorrect current password.")
 
     # Update information
     if new_password:
-        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        hashed_pw = generate_password_hash(new_password)
         cursor.execute("""
             UPDATE admin SET name=%s, email=%s, password=%s WHERE admin_id=%s
         """, (name, email, hashed_pw, session['admin_id']))
@@ -2914,7 +2914,7 @@ def reset_password():
         conn.close()
         return jsonify(success=False, error="Invalid or expired code")
 
-    hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    hashed_pw = generate_password_hash(new_password)
     cursor.execute("UPDATE admin SET password=%s, verification_code=NULL WHERE email=%s", (hashed_pw, email))
     conn.commit()
     conn.close()
@@ -3702,11 +3702,6 @@ def kiosk_return_success():
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080)
 
-if __name__ == "__main__":
-    from setup_db import init_db, fill_inventory
-    init_db()
-    fill_inventory()
-    app.run(debug=True)
 
 
 

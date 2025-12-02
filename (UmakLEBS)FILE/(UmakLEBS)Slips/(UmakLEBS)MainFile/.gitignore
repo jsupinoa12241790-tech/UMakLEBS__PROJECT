@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.env
+lebsData.db
+**/generated_slips/
+**/static/uploads/
+*.sqlite
+*.sqlite3
+node_modules/
+.vscode/
+*.DS_Store
+.env.example
+venv/
+coverage/
+*.log

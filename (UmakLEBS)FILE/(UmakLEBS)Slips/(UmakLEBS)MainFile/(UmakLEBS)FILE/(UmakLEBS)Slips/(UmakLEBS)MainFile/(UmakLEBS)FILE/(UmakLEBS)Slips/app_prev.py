@@ -1,7 +1,7 @@
 from flask import Flask, flash, render_template, request, session, redirect, url_for, jsonify, send_file # Flask imports
 import json # for JSON operations
 import sqlite3 # for database operations
-import bcrypt # secure password hashing
+from werkzeug.security import generate_password_hash, check_password_hash # for password hashing
 from functools import wraps # for login required decorator
 from flask_socketio import SocketIO # for real-time communication
 from werkzeug.utils import secure_filename # for secure file names
@@ -289,7 +289,7 @@ def login_page():
         conn.close()
 
         # Check if user exists and password is correct
-        if not user or not bcrypt.checkpw(password.encode('utf-8'), user[1].encode('utf-8')):
+        if not user or not check_password_hash(user[1], password):
             flash("❌ Invalid credentials", "error")
             return redirect(url_for("login_page"))
 
@@ -332,7 +332,7 @@ def login_step1():
     if not admin:
         conn.close()
         return jsonify({'success': False, 'error': 'Account not found.'})
-    if not bcrypt.checkpw(password.encode('utf-8'), admin['password'].encode('utf-8')):
+    if not check_password_hash(admin['password'], password):
         conn.close()
         return jsonify({'success': False, 'error': 'Incorrect password.'})
 
@@ -2327,7 +2327,7 @@ def create_account():
                 conn.close()
                 return redirect(url_for('login_page'))  # Changed to login_page
 
-            hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            hashed = generate_password_hash(password)
             code = str(os.urandom(3).hex()).upper()           
             ph_time = timezone(timedelta(hours=8))
             now = datetime.now(ph_time).strftime("%Y-%m-%d %H:%M:%S")
@@ -2480,13 +2480,13 @@ def update_admin_account():
         return jsonify(success=False, error="Admin not found.")
 
     # Verify current password
-    if not bcrypt.checkpw(current_password.encode('utf-8'), admin[0].encode('utf-8')):
+    if not check_password_hash(admin[0], current_password):
         conn.close()
         return jsonify(success=False, error="Incorrect current password.")
 
     # Update information
     if new_password:
-        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        hashed_pw = generate_password_hash(new_password)
         cursor.execute("""
             UPDATE admin SET name=?, email=?, password=? WHERE admin_id=?
         """, (name, email, hashed_pw, session['admin_id']))
@@ -2534,7 +2534,7 @@ def reset_password():
         conn.close()
         return jsonify(success=False, error="Invalid or expired code")
 
-    hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    hashed_pw = generate_password_hash(new_password)
     cursor.execute("UPDATE admins SET password=?, verification_code=NULL WHERE email=?", (hashed_pw, email))
     conn.commit()
     conn.close()

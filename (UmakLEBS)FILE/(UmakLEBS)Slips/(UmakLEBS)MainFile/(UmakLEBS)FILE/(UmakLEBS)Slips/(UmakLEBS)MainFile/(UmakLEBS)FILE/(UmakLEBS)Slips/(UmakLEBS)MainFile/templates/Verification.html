@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Verification - UMak LEBS</title>
+  <style>
+    body{
+      font-family:Poppins,sans-serif;
+      background:#F5F7FA;margin:0}
+      .header, .footer{font-family:Poppins,sans-serif; background:#003366;color:#fff;text-align:center;padding:14px;font-weight:bold}
+      .footer{font-family:Poppins,sans-serif; font-size:12px;position:fixed;bottom:0;width:100%}
+      .container{max-width:420px;background:#fff;padding:28px;margin:50px auto;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+      h1{font-family:Poppins,sans-serif; color:#003366;margin:0 0 6px}
+      .sub{font-family:Poppins,sans-serif; font-size:13px;color:#555;margin:0 0 18px;text-align:center}
+      label{font-family:Poppins,sans-serif; display:block;margin:10px 0 6px;font-weight:bold;color:#111}
+      input{font-family:Poppins,sans-serif; width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;margin-bottom:15px;text-align:center;font-size:18px;letter-spacing:3px}
+      button{font-family:Poppins,sans-serif; width:100%;padding:12px;border:none;border-radius:8px;background:#003366;color:#fff;font-weight:bold;cursor:pointer}
+      .flash-container {
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+      }
+      .flash-messages {
+          background: #f44336;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 5px;
+          margin-bottom: 10px;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      }
+  </style>
+</head>
+<body>
+  <div class = "flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+  
+  <div class="header">UMak LEBS<br><small style="font-weight:normal">Laboratory Equipment Borrowing System</small></div>
+  <div class="container">
+    <h1>Verification Code</h1>
+    <p class="sub">Once you enter the code we sent to <b>{{ email }}</b>, you’ll be all logged in.</p>
+    <form method="POST" action="{{ url_for('verification', email=email) }}">
+      <label>Enter Code</label>
+      <input type="text" name="verification_code" maxlength="6" required>
+      <button type="submit">Verify</button>
+    </form>
+  </div>
+  <div class="footer">Developed by Tech-Metanoia</div>
+</body>
+</html>
