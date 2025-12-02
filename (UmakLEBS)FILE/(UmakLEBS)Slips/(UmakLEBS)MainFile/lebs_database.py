@@ -3,7 +3,6 @@ import os
 import bcrypt
 import mysql.connector
 from mysql.connector import Error
-from contextlib import contextmanager
 load_dotenv()
 
 # -----------------------------------------------------------------
@@ -17,8 +16,7 @@ def get_db_connection():
             user=os.getenv('MYSQL_USER', 'root'),
             password=os.getenv('MYSQL_PASS', ''),
             database=os.getenv('MYSQL_DB', 'umak_lebs'),
-            port=int(os.getenv('MYSQL_PORT', 3306)),
-            connection_timeout=int(os.getenv('MYSQL_CONNECT_TIMEOUT', 3))
+            port=int(os.getenv('MYSQL_PORT', 3306))
         )
         return conn
     except Error as e:
@@ -278,57 +276,3 @@ def fill_inventory():
     conn.commit()
     cursor.close()
     conn.close()
-
-
-def is_db_ready():
-    """Return True if DB is reachable. Use ping/is_connected to avoid SELECT result issues."""
-    conn = get_db_connection()
-    if not conn:
-        return False
-    try:
-        if hasattr(conn, 'is_connected') and conn.is_connected():
-            return True
-        try:
-            conn.ping(reconnect=True, attempts=1, delay=0)
-            return True
-        except TypeError:
-            conn.ping(reconnect=True)
-            return True
-    except Exception:
-        return False
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
-
-
-@contextmanager
-def db_connection(dictionary=False, buffered=False):
-    """Context manager to get DB connection and cursor; ensures cursor and connection are closed cleanly.
-
-    Usage: with db_connection(dictionary=True) as (conn, cursor):
-               cursor.execute(...)
-    """
-    conn = get_db_connection()
-    if not conn:
-        yield (None, None)
-        return
-    cursor = None
-    try:
-        if dictionary:
-            cursor = conn.cursor(dictionary=True)
-        else:
-            cursor = conn.cursor(buffered=buffered)
-        yield (conn, cursor)
-    finally:
-        try:
-            if cursor:
-                cursor.close()
-        except Exception:
-            pass
-        try:
-            if conn:
-                conn.close()
-        except Exception:
-            pass

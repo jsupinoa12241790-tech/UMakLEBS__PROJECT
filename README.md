@@ -58,8 +58,6 @@ Notes:
 ## Database
 - The `get_db_connection()` in `lebs_database.py` reads `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASS`, `MYSQL_DB`, and `MYSQL_PORT` from environment variables.
 - First-time deploy: run the `init_db()` endpoint manually or run the app locally to initialize tables.
- - New options: you can control whether the app runs `init_db()` during WSGI startup via the `INIT_DB_ON_STARTUP` env variable. Default is `true` in `.env.example` but for production you may want to set it to `false` and instead run `python setup_db.py` in an init container or as a pre-start hook.
- - For large deployments, `RUN_INIT_IN_THREAD` controls whether `init_db()` is run in a background thread to avoid blocking Gunicorn worker process. Default is `true`.
 
 ## Running locally
 
