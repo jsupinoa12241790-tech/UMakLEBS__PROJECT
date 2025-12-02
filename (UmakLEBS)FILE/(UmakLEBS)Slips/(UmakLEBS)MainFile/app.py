@@ -155,6 +155,10 @@ def login_page():
             (email,)
         )
         user = cursor.fetchone()
+        try:
+            cursor.close()
+        except Exception:
+            pass
         conn.close()
 
         # Check credentials
@@ -177,6 +181,10 @@ def login_page():
             (otp, expiry, user[0])
         )
         conn.commit()
+        try:
+            cursor.close()
+        except Exception:
+            pass
         conn.close()
 
         # Send OTP via email
@@ -210,14 +218,23 @@ def login_step1():
     if not conn:
         return jsonify({'success': False, 'error': 'Database connection failed. Please contact the adminsistrator.'})
     cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT * FROM admins WHERE email = %s", (email,))
-    admins = cur.fetchone()
+    try:
+        cur.execute("SELECT * FROM admins WHERE email = %s", (email,))
+        admins = cur.fetchone()
 
     # Validation
     if not admins:
+        try:
+            cur.close()
+        except Exception:
+            pass
         conn.close()
         return jsonify({'success': False, 'error': 'Account not found. Please craete an account.'})
     if not verify_password(password, admins['password']):
+        try:
+            cur.close()
+        except Exception:
+            pass
         conn.close()
         return jsonify({'success': False, 'error': 'Incorrect password.'})
 
@@ -227,12 +244,18 @@ def login_step1():
     expiry_iso = expiry_time.strftime('%Y-%m-%d %H:%M:%S')
 
     # Store OTP and expiry
-    cur.execute(
-        "UPDATE admins SET otp = %s, otp_expiry = %s WHERE admin_id = %s",
-        (otp_code, expiry_iso, admins['admin_id'])
-    )
-    conn.commit()
-    conn.close()
+    try:
+        cur.execute(
+            "UPDATE admins SET otp = %s, otp_expiry = %s WHERE admin_id = %s",
+            (otp_code, expiry_iso, admins['admin_id'])
+        )
+        conn.commit()
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        conn.close()
 
     # Send OTP email
     try:
@@ -260,10 +283,15 @@ def login_step2():
 
     conn = get_db_connection()
     cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT * FROM admins WHERE email = %s", (email,))
-    admins = cur.fetchone()
+    try:
+        cur.execute("SELECT * FROM admins WHERE email = %s", (email,))
+        admins = cur.fetchone()
 
     if not admins:
+        try:
+            cur.close()
+        except Exception:
+            pass
         conn.close()
         return jsonify({'success': False, 'error': 'Account not found.'})
 
@@ -272,6 +300,10 @@ def login_step2():
 
     # Check OTP match
     if not otp_stored or otp_stored != code:
+        try:
+            cur.close()
+        except Exception:
+            pass
         conn.close()
         return jsonify({'success': False, 'error': 'Invalid verification code.'})
 
@@ -308,9 +340,15 @@ def login_step2():
     session['loggedin'] = True
 
     # Clear OTP (for security)
-    cur.execute("UPDATE admins SET otp = NULL, otp_expiry = NULL WHERE admin_id = %s", (admins['admin_id'],))
-    conn.commit()
-    conn.close()
+    try:
+        cur.execute("UPDATE admins SET otp = NULL, otp_expiry = NULL WHERE admin_id = %s", (admins['admin_id'],))
+        conn.commit()
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        conn.close()
 
     return jsonify({'success': True, 'redirect_url': url_for('dashboard')})
 
@@ -335,6 +373,10 @@ def verify_otp():
     user = cursor.fetchone()
 
     if not user or user[1] != code:
+        try:
+            cursor.close()
+        except Exception:
+            pass
         conn.close()
         flash("❌ Invalid OTP", "error")
         return redirect(url_for("login_page"))
@@ -342,6 +384,10 @@ def verify_otp():
     try:
         otp_expiry = datetime.strptime(user[2], "%Y-%m-%d %H:%M:%S")
     except Exception as e:
+        try:
+            cursor.close()
+        except Exception:
+            pass
         conn.close()
         flash("❌ Invalid OTP expiry format.", "error")
         print(f"⚠️ Failed to parse OTP expiry: {user[2]} ({e})")
@@ -349,12 +395,20 @@ def verify_otp():
 
     # Check expiration
     if otp_expiry < datetime.now():
+        try:
+            cursor.close()
+        except Exception:
+            pass
         conn.close()
         flash("❌ OTP expired", "error")
         return redirect(url_for("login_page"))
 
     cursor.execute("UPDATE admins SET otp=NULL, otp_expiry=NULL WHERE admin_id=%s", (user[0],))
     conn.commit()
+    try:
+        cursor.close()
+    except Exception:
+        pass
     conn.close()
 
     session["admin_id"] = user[0]
@@ -498,6 +552,10 @@ def create_account():
             cursor.execute('SELECT admin_id FROM admins WHERE email = %s', (email,))
             if cursor.fetchone():
                 flash('Account already exists. Please log in.', 'warning')
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
                 conn.close()
                 return redirect(url_for('login_page'))
 
@@ -620,6 +678,10 @@ def verification(email):
                 conn.close()
 
         else:
+            try:
+                cursor.close()
+            except Exception:
+                pass
             conn.close()
             flash("❌ Invalid or expired verification code.", "error")
             return redirect(url_for("verification", email=email))
@@ -739,6 +801,10 @@ def dashboard():
         ORDER BY b.borrow_date DESC, b.borrow_time DESC
     """)
     rows = cursor.fetchall()
+    try:
+        cursor.close()
+    except Exception:
+        pass
     conn.close()
 
     history = {}
@@ -789,6 +855,10 @@ def dashboard():
             WHERE DATE(borrow_date) = %s
         """, (day.strftime('%Y-%m-%d'),))
         weekly_chart.append(cursor2.fetchone()[0] or 0)
+    try:
+        cursor2.close()
+    except Exception:
+        pass
     conn2.close()
 
     # ====== MONTHLY CHART ======
@@ -825,6 +895,10 @@ def dashboard():
         end_label = week_end.strftime("%d").lstrip("0").replace(" 0", " ")
         monthly_labels.append(f"Week {week} ({start_label}–{end_label})")
 
+    try:
+        cursor3.close()
+    except Exception:
+        pass
     conn3.close()
 
     # ====== YEARLY CHART (Jan–Dec) ======
@@ -841,6 +915,10 @@ def dashboard():
         """, (str(year), str(m)))
         yearly_chart.append(cursor4.fetchone()[0] or 0)
         yearly_labels.append(calendar.month_abbr[m])
+    try:
+        cursor4.close()
+    except Exception:
+        pass
     conn4.close()
 
     # ====== RENDER DASHBOARD ======
