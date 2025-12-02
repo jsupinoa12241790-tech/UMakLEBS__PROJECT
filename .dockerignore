@@ -1,0 +1,16 @@
+**/__pycache__
+**/.pytest_cache
+**/.venv
+venv/
+.env
+.git
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info
+**/node_modules
+generated_slips/
+static/uploads/

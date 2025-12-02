@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Login - UMak LEBS</title>
+    <!-- font link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+      * {margin: 0; padding: 0; box-sizing: border-box;}
+      body {
+        min-height: calc(100vh - 100px);
+        font-family: Poppins,sans-serif;
+        background: linear-gradient(to right, #002855, #dfe8f3);
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      .header {
+        font-family:Poppins,sans-serif;
+        background:#FFD200;
+        color:#002855;
+        text-align:center;
+        padding:20px;
+        font-weight:700;
+        font-size:120%;
+      }
+      .footer {
+        font-family:Poppins,sans-serif;
+        background:#555;
+        color:#fff;
+        text-align:center;
+        padding:14px;
+        font-weight:300;
+        position:relative;
+        margin-top:auto;
+        width:100%;
+      }
+      .container {
+        min-width:450px;
+        background:#fff;
+        padding:28px;
+        margin:50px auto;
+        border-radius:10px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.1);
+      }
+      h1{color:#003366;margin:0 0 6px;font-family:Poppins,sans-serif;}
+      label {
+        font-family:Poppins,sans-serif;
+        display:block;
+        margin:10px 0 6px;
+        font-weight:500;
+        color:#002855;
+      }
+      input {
+        width:100%;
+        padding:12px;
+        border:2px solid #e2e8f0;
+        border-radius:8px;
+        font-size:14px;
+        margin-bottom:12px;
+        font-family:Poppins,sans-serif;
+      }
+      button {
+        font-family:Poppins,sans-serif;
+        width:100%;
+        padding:12px;
+        border:none;
+        border-radius:8px;
+        background:#003366;
+        color:#fff;
+        font-weight:bold;
+        cursor:pointer;
+      }
+      button:hover { 
+        background:#49729c; 
+      }
+      .modal-content button:hover {
+        background:#49729c;
+      }
+      /* Flash message styles */
+      .flash-container {
+        position: fixed;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+      }
+
+      .alert {
+        position: relative;
+        padding: 12px 40px 12px 20px;
+        width: 700px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        font-family: Poppins, sans-serif;
+        opacity: 0;
+        transition: opacity 0.4s ease, transform 0.3s ease;
+        transform: translateY(-10px);
+      }
+
+      .alert.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .alert-success {
+        background: #1c8f4c;
+        color: white;
+      }
+
+      .alert-error {
+        background: #c82e1d;
+        color: white;
+      }
+
+      .close-btn-flash {
+        position: absolute;
+        right: 12px;
+        top: 8px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+
+      .close-btn-flash:hover {
+        opacity: 0.7;
+      }
+
+      /* Modal Styles */
+      .modal {
+        display:none;
+        position:fixed;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        background: rgba(0,0,0,0.5);
+        justify-content:center;
+        align-items:center;
+        z-index:10000;
+      }
+      .modal-content {
+        background:#fff;
+        padding:0;
+        border-radius:10px;
+        width:400px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.25);
+      }
+      .modal-content input {
+        width:100%;
+        padding:12px;
+        border:2px solid #e2e8f0;
+        border-radius:8px;
+        font-size:14px;
+        margin-bottom:12px;
+        font-family:Poppins,sans-serif;
+      }
+      .modal-content button {
+        width:100%;
+        padding:12px;
+        margin-top:10px;
+        border:none;
+        border-radius:8px;
+        background:#003366;
+        color:#fff;
+        font-weight:bold;
+        cursor:pointer;
+        font-family:Poppins,sans-serif;
+      }
+      .modal-content button.close-btn {
+        position:absolute;
+        top:10px;
+        right:10px;
+        font-size:20px;
+        background:none;
+        border:none;
+        cursor:pointer;
+        color:#002855;
+      }
+      .modal-header {
+        font-family:Poppins,sans-serif;
+        font-size:16px;
+        background:#FFD200;
+        color:#002855;
+        padding:15px;
+        border-radius:10px 10px 0 0;
+        text-align:center;
+        font-weight:700;
+      }
+      .modal-body { padding:20px; }
+      .modal-body label { font-family:Poppins,sans-serif; display:block; margin:10px 0 6px; font-weight:500; color:#002855; }
+      /* Spinner style */
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-top: 2px solid transparent;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="flash-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              {{ message }}
+              <button class="close-btn-flash" onclick="closeFlash(this)">&times;</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    <div class="header">UMak LEBS<br><small style="font-weight:500">Laboratory Equipment Borrowing System</small></div>
+
+    <div class="container">
+      <h1>Log In</h1>
+      <form id="loginForm">
+        <label>Email</label>
+        <input type="email" name="email" required>
+        <label>Password</label>
+        <input type="password" name="password" required>
+        <button type="submit">Log In</button>
+      </form>
+      <p style="font-size:13px;text-align:center;margin-top:12px;">
+        <a href="#" id="forgotPasswordLink" style="color:#003366;">Forgot password?</a> | 
+        <a href="{{ url_for('create_account') }}" style="color:#003366;">Create an account</a>
+      </p>
+    </div>
+
+    <div class="footer">Developed by Tech-Metanoia</div>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal" id="forgotPasswordModal">
+      <div class="modal-content">
+        <button class="close-btn" onclick="closeModal('forgotPasswordModal')">&times;</button>
+        <div class="modal-header">Forgot Password</div>
+        <div class="modal-body">
+          <div id="stepEmail">
+            <label>Email</label>
+            <input type="email" id="forgotEmail" placeholder="Enter your registered email" required>
+            <button onclick="sendForgotCode()">Send Verification Code</button>
+          </div>
+          <div id="stepCode" style="display:none;">
+            <label>Verification Code</label>
+            <input type="text" id="forgotCode" placeholder="6-digit code" required>
+            <label>New Password</label>
+            <input type="password" id="newForgotPassword" placeholder="New password" required>
+            <label>Confirm Password</label>
+            <input type="password" id="confirmForgotPassword" placeholder="Confirm password" required>
+            <button onclick="resetForgotPassword()">Reset Password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OTP Verification Modal -->
+    <div class="modal" id="otpModal">
+      <div class="modal-content">
+        <button class="close-btn" onclick="closeModal('otpModal')">&times;</button>
+        <div class="modal-header">Two-Factor Authentication</div>
+        <div class="modal-body">
+          <p>A verification code has been sent to your email. Enter it below to complete login.</p>
+          <label>Verification Code</label>
+          <input type="text" id="otpCode" placeholder="6-digit code" required>
+          <button onclick="verifyOTP()">Verify Code</button>
+        </div>
+      </div>
+    </div>
+
+    {% if show_otp_modal %}
+    <script>
+      window.onload = function() { openModal('otpModal'); }
+    </script>
+    {% endif %}
+
+    <script>
+      let loginEmail = ''; // store email for OTP
+
+      function openModal(id) { document.getElementById(id).style.display = "flex"; }
+      function closeModal(id) { 
+        document.getElementById(id).style.display = "none";
+        if(id==='forgotPasswordModal'){
+          document.getElementById('stepEmail').style.display='block';
+          document.getElementById('stepCode').style.display='none';
+          document.getElementById('forgotEmail').value='';
+          document.getElementById('forgotCode').value='';
+          document.getElementById('newForgotPassword').value='';
+          document.getElementById('confirmForgotPassword').value='';
+        }
+        if(id==='otpModal'){ document.getElementById('otpCode').value=''; }
+      }
+
+      // Login Step 1: Email + Password (with spinner feedback)
+      document.getElementById('loginForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        loginEmail = this.email.value.trim();
+        const password = this.password.value;
+        const loginBtn = this.querySelector('button');
+        const originalText = loginBtn.textContent;
+
+        // Disable button and show spinner
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = `<span class="spinner"></span> Sending verification code...`;
+
+        fetch('/login_step1', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({email: loginEmail, password})
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert("✅ Verification code is being sent to your email.");
+            openModal('otpModal');
+          } else {
+            alert("❌ " + data.error);
+          }
+        })
+        .catch(err => {
+          alert("⚠️ Network error. Please try again.");
+          console.error(err);
+        })
+        .finally(() => {
+          loginBtn.disabled = false;
+          loginBtn.textContent = originalText;
+        });
+      });
+
+      // Login Step 2: Verify OTP with loading overlay
+      function verifyOTP() {
+        const code = document.getElementById('otpCode').value.trim();
+        if (!code) {
+          alert("Enter OTP");
+          return;
+        }
+
+        // 🌀 Create a simple loading overlay
+        const overlay = document.createElement("div");
+        overlay.id = "loadingOverlay";
+        overlay.style.position = "fixed";
+        overlay.style.top = "0";
+        overlay.style.left = "0";
+        overlay.style.width = "100%";
+        overlay.style.height = "100%";
+        overlay.style.background = "rgba(0, 0, 0, 0.6)";
+        overlay.style.display = "flex";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.style.zIndex = "9999";
+        overlay.style.color = "#fff";
+        overlay.style.fontSize = "1.3rem";
+        overlay.innerHTML = `
+          <div style="text-align:center;">
+            <div class="spinner" style="width:24px;height:24px;border:3px solid #fff;border-top:3px solid transparent;margin:auto;"></div>
+            <p style="margin-top:12px;">Verifying OTP...</p>
+          </div>`;
+        document.body.appendChild(overlay);
+
+        fetch('/login_step2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loginEmail, code })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            overlay.innerHTML = `
+              <div style="text-align:center;">
+                <div style="font-size:2rem;">✅</div>
+                <p style="margin-top:12px;">Login successful! Redirecting...</p>
+              </div>`;
+            setTimeout(() => {
+              window.location.href = data.redirect_url || '/dashboard';
+            }, 1500);
+          } else {
+            document.body.removeChild(overlay);
+            alert("❌ " + data.error);
+          }
+        })
+        .catch(err => {
+          console.error("Error verifying OTP:", err);
+          document.body.removeChild(overlay);
+          alert("⚠️ Network error. Please try again.");
+        });
+      }
+
+      // Forgot Password Modal
+      document.getElementById('forgotPasswordLink').addEventListener('click', function(e){
+        e.preventDefault(); openModal('forgotPasswordModal');
+      });
+
+      function sendForgotCode(){
+        const email = document.getElementById('forgotEmail').value.trim();
+        if(!email){ alert("Enter your email"); return; }
+
+        const sendBtn = document.querySelector('#stepEmail button');
+        const originalText = sendBtn.textContent;
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = `<span class="spinner"></span> Sending...`;
+
+        fetch('/send_forgot_code', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({email})
+        })
+        .then(res => res.json())
+        .then(data => {
+          if(data.success){
+            alert("✅ Verification code is being sent to your email.");
+            document.getElementById('stepEmail').style.display='none';
+            document.getElementById('stepCode').style.display='block';
+          } else {
+            alert("❌ " + data.error);
+          }
+        })
+        .catch(err => {
+          alert("⚠️ Network error. Please try again.");
+          console.error(err);
+        })
+        .finally(() => {
+          sendBtn.disabled = false;
+          sendBtn.textContent = originalText;
+        });
+      }
+
+      function resetForgotPassword(){
+        const email = document.getElementById('forgotEmail').value.trim();
+        const code = document.getElementById('verificationCode').value.trim();
+        const newPassword = document.getElementById('newPassword').value.trim();
+
+        if(!email || !code || !newPassword){
+          alert("⚠️ Please fill out all fields.");
+          return;
+        }
+
+        const resetBtn = document.querySelector('#stepReset button');
+        const originalText = resetBtn.textContent;
+        resetBtn.disabled = true;
+        resetBtn.innerHTML = `<span class="spinner"></span> Resetting...`;
+
+        fetch('/reset_password', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ email, code, new_password: newPassword })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert("✅ Password has been successfully reset!");
+            closeModal('forgotPasswordModal');
+          } else {
+            alert("❌ " + data.error);
+          }
+        })
+        .catch(err => {
+          alert("⚠️ Network error. Please try again.");
+          console.error(err);
+        })
+        .finally(() => {
+          resetBtn.disabled = false;
+          resetBtn.textContent = originalText;
+        });
+      }
+      
+      // Show flash with fade-in effect
+      document.querySelectorAll('.alert').forEach(alert => {
+        setTimeout(() => alert.classList.add('show'), 100);
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => fadeOutFlash(alert), 5000);
+      });
+
+      // Manual close button
+      function closeFlash(btn) {
+        const alert = btn.parentElement;
+        fadeOutFlash(alert);
+      }
+
+      // Fade-out function
+      function fadeOutFlash(alert) {
+        alert.style.opacity = '0';
+        alert.style.transform = 'translateY(-10px)';
+        setTimeout(() => alert.remove(), 400);
+      }
+    </script>
+  </body>
+</html>
