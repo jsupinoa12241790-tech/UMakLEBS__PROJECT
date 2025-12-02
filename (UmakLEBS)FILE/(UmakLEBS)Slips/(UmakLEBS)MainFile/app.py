@@ -387,9 +387,9 @@ def verify_otp():
 # SEND VERIFICATION EMAIL
 # -----------------------------------------------------------------
 def send_verification_email(receiver_email, code):
-    # SendGrid-only simple implementation (Railway-friendly)
-    api_key = os.getenv("SENDGRID_API_KEY")
-    sender_email = os.getenv("SENDGRID_SENDER", "noreply@umaklebs.com")
+    # Resend.com implementation (uses REST API) — Railway-friendly
+    api_key = os.getenv("RESEND_API_KEY")
+    sender_email = os.getenv("RESEND_SENDER", "noreply@umaklebs.com")
 
     message_body = f"""
     Dear User,
@@ -404,31 +404,37 @@ def send_verification_email(receiver_email, code):
     """
 
     data = {
-        "personalizations": [{
-            "to": [{"email": receiver_email}],
-            "subject": "UMak-LEBS Account Verification Code"
-        }],
-        "from": {"email": sender_email},
-        "content": [{
-            "type": "text/plain",
-            "value": message_body.strip()
-        }]
+        "from": sender_email,
+        "to": [receiver_email],
+        "subject": "UMak-LEBS Account Verification Code",
+        "text": message_body.strip()
     }
+
+    if not api_key:
+        print("❌ RESEND_API_KEY not configured. Skipping email send.")
+        return False
 
     try:
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        resp = requests.post("https://api.sendgrid.com/v3/mail/send", headers=headers, json=data, timeout=10)
-        if resp.status_code == 202:
-            print("✅ Verification email sent successfully via SendGrid")
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            headers=headers,
+            json=data,
+            timeout=10
+        )
+
+        if resp.status_code in (200, 202):
+            print("✅ Verification email sent via Resend")
             return True
         else:
-            print(f"❌ SendGrid error: {resp.status_code}, {resp.text}")
+            print(f"❌ Resend error: {resp.status_code} - {resp.text}")
             return False
+
     except Exception as e:
-        print(f"❌ SendGrid request failed: {type(e).__name__}: {e}")
+        print(f"❌ Resend request failed: {type(e).__name__}: {e}")
         return False
 
 # -----------------------------------------------------------------
