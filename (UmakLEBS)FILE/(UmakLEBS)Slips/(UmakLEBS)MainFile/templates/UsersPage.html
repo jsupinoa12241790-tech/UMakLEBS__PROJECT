@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMAK-LEBS</title>
+
+    <!-- font link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='UsersStyle.css') }}">
+  </head>
+<!-- BODY -->
+<body>
+<!-- Top Header -->
+  <header class="topbar">
+      <img src="{{ url_for('static', filename='Icons/Umak.png') }}">
+      <h1>University of Makati - LEBS</h1>
+  </header>
+
+<!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="profMenu" onclick="showProfile()"> <!-- Profile -->
+      <div class="profIcon">
+        <img src="{{ url_for('static', filename='Icons/Profile.png') }}" alt="Umak Logo">
+      </div>
+      <div id="logoutDropdown" class="logout-dropdown">
+        <a href="{{ url_for('logout') }}" class="menu-item">
+            <img src="{{ url_for('static', filename='Icons/LogOut Icon.png') }}">
+            Log Out
+        </a>
+
+        <div class="divider"></div>
+
+        <button class="menu-item" onclick="openModal('manageAccountModal')">
+            <img src="{{ url_for('static', filename='Icons/Profile.png') }}">
+            Manage Account
+        </button>
+      </div>
+    </div>
+
+    <a href="{{ url_for('dashboard') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Dashboard.png') }}" alt="Dashboard Icon" />
+      </div>
+      <span>Dashboard</span>
+    </a>
+
+    <a href="{{ url_for('borrow_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Borrow.png') }}" alt="Borrow Icon" />
+      </div>
+      <span>Borrow</span>
+    </a>
+
+    <a href="{{ url_for('rfid_scanner_return') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Return.png') }}" alt="Return Icon" />
+      </div>
+      <span>Return</span>
+    </a>
+
+    <a href="{{ url_for('inventory_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Inventory.png') }}" alt="Inventory Icon" />
+      </div>
+      <span>Inventory</span>
+    </a>
+
+    <div class="nav-item active" onclick="showSection('users')">
+        <div class="nav-icon">
+          <img src="{{ url_for('static', filename='Icons/Users.png') }}" alt="Users Icon" />
+        </div>
+        <span>Users</span>
+    </div>
+
+    <a href="{{ url_for('history_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/History.png') }}" alt="History Icon" />
+      </div>
+      <span>History</span>
+    </a>
+    
+    <a href="{{ url_for('report_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Report.png') }}" alt="Report Icon" />
+      </div>
+      <span>Reports</span>
+    </a>
+
+    <a href="{{ url_for('kiosk_page') }}" target="_blank" class="nav-item" title="Open Kiosk in New Tab">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Kiosk Icon.png') }}" alt="Kiosk Icon" />
+      </div>
+      <span> Kiosk</span>
+    </a>
+  </aside>
+
+<!-- Main Features of the frame -->
+  <main class="mainFeat">
+    <h1 class="dbTitle">Users</h1> <!-- Title of the main features -->
+
+    <!-- Content Grid -->
+    <div class="content">
+          <!-- Search Bar -->
+          <div class="search-container">
+              <div class="search-box">
+                  <input type="text" id="searchInput" class="search-input" placeholder="Search by name..." onkeyup="searchUsers()">
+                  <span class="search-icon">🔍</span>
+              </div>
+              <button class="recently-deleted-btn" onclick="openArchiveModal()">Recently Deleted</button>
+          </div>
+          <!-- Table Actions -->
+          <div class="table-actions">
+              <button class="action-btn btn-add" onclick="addUser()">Add</button>
+              <button class="action-btn btn-edit" onclick="editUser()">Edit</button>
+              <button class="action-btn btn-delete" onclick="deleteUser()">Delete</button>
+          </div>
+          <!-- Users Table -->
+          <div class="table-container">
+              <table class="users-table">
+                  <thead>
+                      <tr>
+                          <th>Borrower No.</th>
+                          <th>Name</th>
+                          <th>Student No.</th>
+                          <th>College</th>
+                          <th>Course</th>
+                          <th>Email</th>
+                          <th>Roles</th>
+                          <th>Transactions</th>
+                          <th>Image</th>
+                          <th>          </th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for user in users %}
+                      <tr onclick="selectRow(this)">
+                          <td>{{ user.user_id }}</td>
+                          <td>{{ user.name }}</td>
+                          <td>{{ user.borrower_id }}</td>
+                          <td>{{ user.department }}</td>
+                          <td>{{ user.course }}</td>
+                          <td>{{ user.umak_email }}</td>
+                          <td>{{ user.roles }}</td>
+                          <td>{{ user.transactions }}</td>
+                          <td>
+                            {% if user.image %}
+                              {% set img = user.image.replace('uploads/uploads/', 'uploads/').replace('static/uploads/', '').lstrip('/') %}
+                              <button class="upload-btn"
+                                      onclick="openPreviewModal('{{ url_for('static', filename=img) }}', {{ user.user_id }})">
+                                  Preview
+                              </button>
+                            {% else %}
+                              <button class="upload-btn" onclick="uploadImage({{ user.user_id }})">
+                                Upload
+                              </button>
+                            {% endif %}
+                          </td>
+                          <td>
+                              <button class="action-btn btn-view" onclick="viewTransactions({{ user.user_id }})">View</button>
+                          </td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+          </div>
+    </div>
+  </main>
+  <!-- End of main faetures -->
+  <!-- Script -->
+  <script>
+    //get the search input
+    function searchUsers() {
+      // Get search input and convert to lowercase for case-insensitive matching
+      let input = document.getElementById("searchInput").value.toLowerCase();
+      let table = document.querySelector(".users-table tbody");
+      let rows = table.getElementsByTagName("tr");
+
+      // Loop through all rows in the table
+      for (let i = 0; i < rows.length; i++) {
+          let row = rows[i];
+          let cells = row.getElementsByTagName("td");
+          let match = false;
+
+          // Check each cell (you can restrict this to specific columns if needed)
+          for (let j = 0; j < cells.length; j++) {
+              if (cells[j]) {
+                  let textValue = cells[j].textContent || cells[j].innerText;
+                  if (textValue.toLowerCase().includes(input)) {
+                      match = true;
+                      break;
+                  }
+              }
+          }
+          // Show row if it matches, otherwise hide it
+          row.style.display = match ? "" : "none";
+      } // end of Loop through all rows in the table
+    }
+    //add, delete, and edit buttons 
+    let selectedRow = null; // track selected row
+    let editing = false; // track if editing or adding
+
+    //function to select the user's row
+    function selectRow(row) {
+        // Remove highlight from all rows first
+        let rows = document.querySelectorAll(".users-table tbody tr");
+        rows.forEach(r => r.classList.remove("selected"));
+
+        // Highlight the clicked row
+        row.classList.add("selected");
+
+        // Track the selected row
+        selectedRow = row;
+    }
+    // Remove highlight when clicking outside the table
+    document.addEventListener("click", function (event) {
+      const table = document.querySelector(".users-table");
+      const clickedInsideTable = table.contains(event.target);
+
+      if (!clickedInsideTable) {
+        // Remove the highlight from all rows
+        const rows = document.querySelectorAll(".users-table tbody tr");
+        rows.forEach(r => r.classList.remove("selected"));
+        selectedRow = null; // also clear the selected row variable
+      }
+    });
+    // Function to handle image upload for each row
+    function uploadImage(userId) {
+      let fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/*";
+
+      fileInput.click();
+
+      fileInput.onchange = function () {
+        let file = fileInput.files[0];
+        if (!file) return;
+
+        let formData = new FormData();
+        formData.append("image", file);
+
+        fetch(`/upload_user_image/${userId}`, {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            alert("✅ Image uploaded successfully!");
+            location.reload();
+          } else {
+            alert("❌ " + (data.message || "Upload failed"));
+          }
+        })
+        .catch(err => {
+          console.error("Upload error:", err);
+          alert("Error uploading image");
+        });
+      };
+    }
+
+    function openPreviewModal(imageUrl, userId) {
+      const modal = document.getElementById("imagePreviewModal");
+      const previewImage = document.getElementById("previewImage");
+      const uploadBtn = document.getElementById("uploadNewImageBtn");
+
+      previewImage.src = imageUrl;
+      modal.style.display = "flex"; // use flex for centering
+      uploadBtn.onclick = function() {
+        closeModal('imagePreviewModal');
+        uploadImage(userId);
+      };
+    }
+    
+    // Close modal if clicked outside the image
+    window.addEventListener("click", function(event) {
+      const modal = document.getElementById("imagePreviewModal");
+      if (event.target === modal) {
+        closeModal('imagePreviewModal');
+      }
+    });
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = "none";
+    }
+      //function to add user or borrower
+      function addUser() {
+          editing = false;
+          document.getElementById("modalTitle").innerText = "Add User";
+          document.getElementById("userForm").reset();
+          openModal();
+      }
+    //function to edit user or borrower
+      function editUser() {
+        if (!selectedRow) {
+          alert("Please select a row to edit.");
+          return;
+        }
+
+        editing = true;
+        document.getElementById("modalTitle").innerText = "Edit User";
+
+        // Grab all cell data
+        let cells = selectedRow.getElementsByTagName("td");
+
+        // Extract info from columns based on your table structure
+        let borrowerNo = cells[0].innerText.trim();
+        let fullName = cells[1].innerText.trim();
+        let studentNo = cells[2].innerText.trim();
+        let college = cells[3].innerText.trim();
+        let course = cells[4].innerText.trim();
+        let email = cells[5].innerText.trim();
+        let roles = cells[6].innerText.trim();
+
+        // Split full name (format: "Last, First")
+        let lastName = "";
+        let firstName = "";
+        if (fullName.includes(",")) {
+          [lastName, firstName] = fullName.split(",").map(s => s.trim());
+        } else {
+          // Fallback if name is missing comma
+          let parts = fullName.split(" ");
+          firstName = parts.pop();
+          lastName = parts.join(" ");
+        }
+
+        // ✅ Assign the correct values to modal inputs
+        document.getElementById("editLastName").value = lastName;
+        document.getElementById("editFirstName").value = firstName;
+        document.getElementById("editStudentNo").value = studentNo;
+
+        document.getElementById("editCollege").value = college;
+        document.getElementById("editCourse").value = course;
+        document.getElementById("editUmakEmail").value = email;
+        document.getElementById("editRoles").value = roles;
+
+        // ✅ Store the user_id to edit later
+        document.getElementById("editUserModal").dataset.userId = borrowerNo;
+
+        openEditModal();
+      }
+      //function to save the edit for user's details
+      function saveEditedUser() {
+        if (!selectedRow) return;
+
+        let userId = document.getElementById("editUserModal").dataset.userId;
+        let lastName = document.getElementById("editLastName").value;
+        let firstName = document.getElementById("editFirstName").value;
+        let studentNo = document.getElementById("editStudentNo").value;
+        let umakEmail = document.getElementById("editUmakEmail").value;
+        let college = document.getElementById("editCollege").value;
+        let course = document.getElementById("editCourse").value;
+        let roles = document.getElementById("editRoles").value;
+
+        fetch(`/edit_user/${userId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                last_name: lastName, 
+                first_name: firstName, 
+                stud_no: studentNo, 
+                college: college, 
+                course: course, 
+                umak_email: umakEmail,
+                roles: roles
+            })
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(err => { throw err; });
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (data.status === "success") {
+                alert("User updated successfully!");
+                closeEditModal();
+                location.reload();
+            } else {
+                alert("Error: " + (data.message || "Unknown error"));
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Error updating user: " + (error.message || "Please try again"));
+        });
+    }
+    //function to delete user or borrower
+      function deleteUser() {
+        if (!selectedRow) {
+            alert("Please select a row to delete.");
+            return;
+        }
+        let userId = selectedRow.getElementsByTagName("td")[0].innerText;
+        let borrowerName = selectedRow.getElementsByTagName("td")[1].innerText;
+
+        if (!confirm(`Are you sure you want to delete borrower "${borrowerName}"?`)) return;
+
+        fetch(`/delete_user/${userId}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                location.reload();
+            }
+        });
+      }
+    function saveUser() {
+      let formData = new FormData();
+      formData.append("rfid", document.getElementById("rfid").value);
+      formData.append("lastName", document.getElementById("lastName").value);
+      formData.append("firstName", document.getElementById("firstName").value);
+      formData.append("stud_no", document.getElementById("studentNo").value);
+      formData.append("umakEmail", document.getElementById("umakEmail").value);
+      formData.append("college", document.getElementById("college").value);
+      formData.append("course", document.getElementById("course").value);
+      formData.append("roles", document.getElementById("roles").value);
+
+      // Append image if selected
+      let imageInput = document.getElementById("image");
+      if (imageInput.files.length > 0) {
+          formData.append("image", imageInput.files[0]);
+      }
+
+      // Validate required fields
+      if (!formData.get("rfid") || !formData.get("lastName") || !formData.get("firstName") || !formData.get("stud_no")) {
+          alert("Please fill in all required fields (RFID, Last Name, First Name, Student No.)");
+          return;
+      }
+
+      fetch("/add_user", {
+          method: "POST",
+          body: formData // do NOT set Content-Type header
+      })
+      .then(res => res.json())
+      .then(data => {
+          if (data.status === "success") {
+              alert("User added successfully!");
+              closeModal('userModal');
+              location.reload(); // refresh table
+          } else {
+              alert("Error: " + (data.message || "Unknown error occurred"));
+          }
+      })
+      .catch(error => {
+          console.error("Error:", error);
+          alert("Error adding user: " + (error.message || "Please try again"));
+      });
+    }
+
+      function openModal() {
+        const modal = document.getElementById("userModal");
+        modal.style.display = "flex"; // enable flex centering
+      }
+
+      function openEditModal() {
+        const modal = document.getElementById("editUserModal");
+        modal.style.display = "flex"; // enable flex centering
+      }
+
+      function closeModal(id = "userModal") {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = "none";
+      }
+
+      function closeEditModal() {
+          document.getElementById("editUserModal").style.display = "none";
+      }
+      // Log Out Script
+      function showProfile() {
+        const dropdown = document.getElementById("logoutDropdown");
+        // Toggle dropdown visibility
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      }
+
+      // Hide dropdown when clicking outside
+      document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById("logoutDropdown");
+        const profile = document.querySelector('.profMenu');
+        if (!dropdown.contains(event.target) && !profile.contains(event.target)) {
+          dropdown.style.display = "none";
+        }
+      });
+
+      // Prevent going back after logout
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = function() {
+          window.history.pushState(null, null, window.location.href);
+        };
+      }
+
+      // View Transactions Modal
+      function viewTransactions(userId) {
+        fetch(`/user_transactions/${userId}`)
+          .then(res => res.json())
+          .then(data => {
+            let tbody = document.querySelector("#transactionTable tbody");
+            tbody.innerHTML = "";
+
+            if (!data.transactions || data.transactions.length === 0) {
+              tbody.innerHTML = `
+                <tr>
+                  <td colspan="5" style="text-align:center; padding: 20px; color: #666; font-style: italic;">
+                    No transactions found for this user.
+                  </td>
+                </tr>`;
+            } else {
+              data.transactions.forEach(tx => {
+                let status = tx.return_date ? "Returned" : "Borrowed";
+                // Format transaction_id to 7 digits
+                let formattedId = String(tx.transaction_id).padStart(7, '0');
+
+                tbody.innerHTML += `
+                  <tr>
+                    <td>${formattedId}</td>
+                    <td>${tx.item_name}</td>
+                    <td>${status}</td>
+                    <td>${tx.borrow_date} ${tx.borrow_time || ''}</td>
+                    <td>${tx.return_date ? tx.return_date + ' ' + (tx.return_time || '') : '-'}</td>
+                  </tr>`;
+              });
+            }
+
+            document.getElementById("transactionModal").style.display = "flex";
+          })
+          .catch(err => {
+            console.error(err);
+            alert("Error fetching transactions.");
+          });
+      }
+
+      // Close modal
+      function closeTransactionModal() {
+        document.getElementById("transactionModal").style.display = "none";
+      }
+
+    function openAdminModal(id) {
+      document.getElementById(id).style.display = "flex";
+
+      if (id === "manageAccountModal") {
+        fetch("/get_admin_account")
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              document.getElementById("adminFirstName").value = data.first_name || "";
+              document.getElementById("adminLastName").value = data.last_name || "";
+              document.getElementById("adminEmail").value = data.email || "";
+            } else {
+              alert("⚠️ Failed to load account info.");
+            }
+          })
+          .catch(err => console.error("Error fetching admin info:", err));
+      }
+    }
+
+    function saveAdminAccount() {
+      const firstName = document.getElementById("adminFirstName").value.trim();
+      const lastName = document.getElementById("adminLastName").value.trim();
+      const email = document.getElementById("adminEmail").value.trim();
+      const currentPassword = document.getElementById("currentAdminPassword").value;
+      const newPassword = document.getElementById("adminPassword").value;
+      const confirmPassword = document.getElementById("confirmAdminPassword").value;
+
+      if (!firstName || !lastName || !email || !currentPassword) {
+        alert("⚠️ All required fields must be filled.");
+        return;
+      }
+
+      if (newPassword && newPassword !== confirmPassword) {
+        alert("⚠️ New passwords do not match.");
+        return;
+      }
+
+      fetch("/update_admin_account", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("✅ Account details updated successfully!");
+          closeModal("manageAccountModal");
+          document.getElementById("manageAccountForm").reset();
+        } else {
+          alert("❌ " + data.error);
+        }
+      })
+      .catch(err => console.error("Error updating account:", err));
+    }
+    
+    // -------------------- RECENTLY DELETED (ARCHIVE) --------------------
+    function openArchiveModal() {
+      const modal = document.getElementById("archiveModal");
+      const tbody = document.getElementById("archiveTableBody");
+
+      modal.style.display = "flex";
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:10px;">Loading...</td></tr>`;
+
+      fetch("/archived_users")
+        .then(res => res.json())
+        .then(data => {
+          tbody.innerHTML = "";
+          if (!data.users || data.users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:10px; color:#666;">No recently deleted users.</td></tr>`;
+            return;
+          }
+
+          data.users.forEach(u => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${u.user_id}</td>
+                <td>${u.name}</td>
+                <td>${u.borrower_id}</td>
+                <td>${u.department}</td>
+                <td>${u.course}</td>
+                <td>${u.roles}</td>
+                <td>${u.deleted_at || '-'}</td>
+                <td>
+                  <button class="restore-btn" onclick="restoreUser(${u.user_id})">Restore</button>
+                </td>
+              </tr>`;
+          });
+        })
+        .catch(err => {
+          console.error("Error loading archived users:", err);
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Error loading archive.</td></tr>`;
+        });
+    }
+
+    function restoreUser(userId) {
+      if (!confirm("Are you sure you want to restore this user?")) return;
+
+      fetch(`/restore_user/${userId}`, { method: "PUT" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            alert("✅ User restored successfully!");
+            closeModal("archiveModal");
+            location.reload();
+          } else {
+            alert("❌ Failed to restore user.");
+          }
+        })
+        .catch(err => {
+          console.error("Restore error:", err);
+          alert("Error restoring user.");
+        });
+    }
+  </script>
+  <!-- End of script -->
+
+    <!-- Manage Account Modal -->
+    <div class="adminModal" id="manageAccountModal">
+      <div class="admin-content">
+        <div class="modal-header">
+          <h2>Manage Account</h2>
+          <button class="close-btn" onclick="closeModal('manageAccountModal')">&times;</button>
+        </div>
+
+        <form id="manageAccountForm" onsubmit="event.preventDefault(); saveAdminAccount();">
+          <div class="form-group">
+            <label for="adminFirstName">First Name</label>
+            <input type="text" id="adminFirstName" class="form-input" placeholder="Enter your first name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminLastName">Last Name</label>
+            <input type="text" id="adminLastName" class="form-input" placeholder="Enter your last name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminEmail">Email</label>
+            <input type="email" id="adminEmail" class="form-input" placeholder="Enter your email" required>
+          </div>
+
+          <hr style="margin: 10px 0;">
+
+          <div class="form-group">
+            <label for="currentAdminPassword">Current Password</label>
+            <input type="password" id="currentAdminPassword" class="form-input" placeholder="Enter current password" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminPassword">New Password</label>
+            <input type="password" id="adminPassword" class="form-input" placeholder="Leave blank to keep current password">
+          </div>
+
+          <div class="form-group">
+            <label for="confirmAdminPassword">Confirm New Password</label>
+            <input type="password" id="confirmAdminPassword" class="form-input" placeholder="Confirm new password">
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-cancel" onclick="closeModal('manageAccountModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+<!-- Modals for add and edit buttons-->
+   <!-- Add user Modal -->
+    <div id="userModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeModal('userModal')">&times;</span>
+        <h2 id="modalTitle">Add User</h2> <!--add a borrower or user.-->
+        <form id="userForm">
+          <!-- RFID Input -->
+          <label for="rfid">RFID</label>
+          <input type="password" id="rfid" name="rfid" placeholder="Scan RFID card" required>
+          <label>Last Name</label> <!--Get borrower's name-->
+          <input type="text" id="lastName" placeholder="Last name" required>
+          <label>First Name</label> <!--Get borrower's name-->
+          <input type="text" id="firstName" placeholder="First name" required>
+          <label>Student No.</label> <!--Get borrower's student no.-->
+          <input type="text" id="studentNo" placeholder="Student no" required>
+          <label>Email</label> <!--Get borrower's student no.-->
+          <input type="text" id="umakEmail" placeholder="Umak email" required>
+          <label>College</label> <!--Get borrower's College or depoartment-->
+          <input type="text" id="college" placeholder="CCIS" required>
+          <label>Course</label> <!--Get borrower's course-->
+          <input type="text" id="course" placeholder="Course" required>
+          <div class="form-group">
+            <label>Roles</label> <!--Get borrower's course-->
+            <select id="roles" name="roles" required>
+              <option value="" disabled selected>Select Role</option>
+              <option value="Admin">Admin</option>
+              <option value="Student">Student</option>
+              <option value="Instructor">Instructor</option>
+            </select>
+          </div>
+          <label>Image</label> <!--Get borrower's image-->
+          <input type="file" id="image" accept="image/*">
+          <button class="closeBtn" type="button" onclick="closeModal()">Cancel</button> <!--Button to cancel the edit-->
+          <button class="saveModalBtn" type="button" onclick="saveUser()">Save</button> <!--Button to save the edit-->
+        </form>
+      </div>
+    </div>
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        <h2>Edit User</h2>
+        <form id="editUserForm">
+          <label> Last Name</label>
+          <input type="text" id="editLastName" required>
+          <label> First Name</label>
+          <input type="text" id="editFirstName" required>
+          <label>Student No.</label>
+          <input type="text" id="editStudentNo" required>
+          <label>Email</label> <!--Get borrower's student no.-->
+          <input type="text" id="editUmakEmail" placeholder="Umak email" required>
+          <label>College</label>
+          <input type="text" id="editCollege" required>
+          <label>Course</label>
+          <input type="text" id="editCourse" required>
+          <div class="form-group">
+            <label>Roles</label> <!--Get borrower's course-->
+            <select id="editRoles" name="roles" required>
+              <option value="" disabled selected>Select Role</option>
+              <option value="Admin">Admin</option>
+              <option value="Student">Student</option>
+              <option value="Instructor">Instructor</option>
+            </select>
+          </div>
+          <label>Image</label>
+          <input type="file" id="editImage" accept="image/*">
+          <button class="closeBtn" type="button" onclick="closeEditModal()">Cancel</button> <!--Button to cancel the edit-->
+          <button class="saveModalBtn" type="submit" onclick="saveEditedUser()">Save Changes</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="imagePreviewModal" class="image-modal">
+      <div class="image-modal-content">
+        <span class="image-close-btn" onclick="closeModal('imagePreviewModal')">&times;</span>
+        <img id="previewImage" src="" alt="Preview" class="preview-img">
+        <div class="image-modal-buttons">
+          <button class="upload-new-btn" id="uploadNewImageBtn">Upload New Image</button>
+        </div>
+      </div>
+    </div>
+
+     <!-- Transaction Modal -->
+    <div id="transactionModal" class="modal" style="display:none;">
+      <div class="transact-content">
+        <span class="close-btn" onclick="closeTransactionModal()">&times;</span>
+        <h2>User Transactions</h2>
+        <table id="transactionTable" class="transact-table">
+          <thead>
+            <tr>
+              <th>Transaction ID</th>
+              <th>Item Name</th>
+              <th>Status</th>
+              <th>Borrowed Date</th>
+              <th>Returned Date</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recently Deleted Modal -->
+    <div id="archiveModal" class="modal" style="display:none;">
+      <div class="modal-content large-modal">
+        <span class="close-btn" onclick="closeModal('archiveModal')">&times;</span>
+        <h2>Recently Deleted Users</h2>
+        <table class="users-table archive-table">
+          <thead>
+            <tr>
+              <th>Borrower No.</th>
+              <th>Name</th>
+              <th>Student No.</th>
+              <th>College</th>
+              <th>Course</th>
+              <th>Roles</th>
+              <th>Date Deleted</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="archiveTableBody">
+            <tr><td colspan="8" style="text-align:center; padding:10px;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+</body>
+</html>
