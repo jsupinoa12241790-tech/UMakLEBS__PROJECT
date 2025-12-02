@@ -434,7 +434,19 @@ def send_verification_email(receiver_email, code):
             return False
 
     except Exception as e:
+        # Helpful debug output for DNS/connectivity issues
         print(f"❌ Resend request failed: {type(e).__name__}: {e}")
+
+        # If the deployment cannot make outbound DNS/HTTP requests (common on some hosts),
+        # allow a console fallback for development/testing. Set EMAIL_BACKEND=console to enable.
+        email_backend = os.getenv("EMAIL_BACKEND", "").lower()
+        if email_backend == "console":
+            try:
+                print(f"[console fallback] Verification code for {receiver_email}: {code}")
+                return True
+            except Exception:
+                pass
+
         return False
 
 # -----------------------------------------------------------------
