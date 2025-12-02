@@ -179,8 +179,10 @@ def login_page():
         conn.commit()
         conn.close()
 
-        # Send OTP via email
-        send_verification_email(email, otp)
+        # Send OTP via email (ensure we report failure)
+        sent = send_verification_email(email, otp)
+        if not sent:
+            flash('Failed to send verification email. Please contact the administrator.', 'warning')
 
         # Temporarily store email in session for the OTP step
         session["pending_email"] = email
@@ -250,10 +252,8 @@ def login_step1():
             pass
 
     # Send OTP email
-    try:
-        send_verification_email(email, otp_code)
-    except Exception as e:
-        print(f"[ERROR] Failed to send OTP: {e}")
+    sent = send_verification_email(email, otp_code)
+    if not sent:
         return jsonify({'success': False, 'error': 'Failed to send verification email.'})
 
     return jsonify({'success': True, 'message': 'OTP sent to your email.'})
@@ -386,8 +386,14 @@ def verify_otp():
 # SEND VERIFICATION EMAIL
 # -----------------------------------------------------------------
 def send_verification_email(receiver_email, code):
+    # Configurable email settings via environment
+    smtp_backend = os.getenv("EMAIL_BACKEND", "smtp").lower()  # 'smtp' or 'console'
+    smtp_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("EMAIL_PORT", 587))
     smtp_user = os.getenv("EMAIL_USER")
     smtp_pass = os.getenv("EMAIL_PASS")
+    smtp_use_tls = os.getenv("EMAIL_USE_TLS", "true").lower() in ("1", "true", "yes")
+    smtp_timeout = float(os.getenv("EMAIL_TIMEOUT", 10.0))
 
     message_body = f"""
     Dear User,
@@ -396,7 +402,7 @@ def send_verification_email(receiver_email, code):
 
     Your verification code is: {code}
 
-    Please enter this code in the verification field to proceed. 
+    Please enter this code in the verification field to proceed.
     For your security, do not share this code with anyone.
 
     Best regards,
@@ -405,22 +411,31 @@ def send_verification_email(receiver_email, code):
     """
     msg = MIMEText(message_body.strip())
     msg["Subject"] = "UMak-LEBS Account Verification Code"
-    msg["From"] = smtp_user
+    msg["From"] = smtp_user or f"no-reply@{os.getenv('APP_DOMAIN','localhost')}"
     msg["To"] = receiver_email
 
-    max_retries = 3
+    # Allow a console backend for development or when SMTP is blocked
+    if smtp_backend == "console":
+        print(f"[EMAIL-DRY-RUN] To: {receiver_email} -- Code: {code}")
+        return True
+
+    max_retries = int(os.getenv("EMAIL_MAX_RETRIES", 3))
     for attempt in range(1, max_retries + 1):
         try:
-            with smtplib.SMTP("smtp.gmail.com", 587) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_user, [receiver_email], msg.as_string())
+            # pass timeout to SMTP constructor to avoid hanging on DNS or connect
+            with smtplib.SMTP(host=smtp_host, port=smtp_port, timeout=smtp_timeout) as server:
+                if smtp_use_tls:
+                    server.starttls()
+                if smtp_user and smtp_pass:
+                    server.login(smtp_user, smtp_pass)
+                server.sendmail(msg["From"], [receiver_email], msg.as_string())
             print("✅ Verification email sent successfully")
             return True
         except Exception as e:
-            print(f"❌ Error sending email (attempt {attempt}/{max_retries}): {e}")
+            # Provide clearer logging and include backend details
+            print(f"❌ Error sending email (attempt {attempt}/{max_retries}) to {receiver_email} via {smtp_host}:{smtp_port} - {type(e).__name__}: {e}")
             if attempt < max_retries:
-                time_module.sleep(1 * attempt)  # backoff
+                time_module.sleep(min(5, attempt * 1))  # small backoff
             else:
                 return False
 
@@ -553,11 +568,13 @@ def create_account():
                     conn.rollback()
                     raise
 
-            # ✅ Send email
-            send_verification_email(email, code)
-
+            # ✅ Send email (check success)
+            sent = send_verification_email(email, code)
             session['pending_email'] = email
-            flash('Verification code has been sent to your email.', 'success')
+            if sent:
+                flash('Verification code has been sent to your email.', 'success')
+            else:
+                flash('Verification code could not be sent. Please contact the administrator or try resending.', 'warning')
             return redirect(url_for('verification', email=email))
             
         except Exception as e:
@@ -661,8 +678,11 @@ def resend_code():
         conn.commit()
 
         # ✅ Send updated code
-        send_verification_email(email, code)
-        flash('Verification code resent successfully.', 'success')
+        sent = send_verification_email(email, code)
+        if sent:
+            flash('Verification code resent successfully.', 'success')
+        else:
+            flash('Failed to send verification code. Please contact the administrator.', 'danger')
 
     except Exception as e:
         conn.rollback()
