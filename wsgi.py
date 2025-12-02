@@ -13,6 +13,7 @@ if os.path.isdir(nested_path) and nested_path not in sys.path:
 
 # Import the application object for Gunicorn
 try:
-    from app import application
+    from app import application  # type: ignore
 except ImportError:
-    from app import app as application
+    from app import app as application  # type: ignore
+
