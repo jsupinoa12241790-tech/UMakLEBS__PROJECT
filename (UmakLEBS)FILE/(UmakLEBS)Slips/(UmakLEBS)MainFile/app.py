@@ -91,7 +91,7 @@ def allowed_file(filename):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'admins_id' not in session:
+        if 'admin_id' not in session:
             return redirect(url_for('login_page'))
         return f(*args, **kwargs)
     return decorated_function
@@ -151,7 +151,7 @@ def login_page():
 
         # Fetch admins record based on email
         cursor.execute(
-            "SELECT admins_id, password, first_name, last_name FROM admins WHERE email = %s",
+            "SELECT admin_id, password, first_name, last_name FROM admins WHERE email = %s",
             (email,)
         )
         user = cursor.fetchone()
@@ -173,7 +173,7 @@ def login_page():
             return redirect(url_for("login_page"))
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE admins SET otp = %s, otp_expiry = %s WHERE admins_id = %s",
+            "UPDATE admins SET otp = %s, otp_expiry = %s WHERE admin_id = %s",
             (otp, expiry, user[0])
         )
         conn.commit()
@@ -228,8 +228,8 @@ def login_step1():
 
     # Store OTP and expiry
     cur.execute(
-        "UPDATE admins SET otp = %s, otp_expiry = %s WHERE admins_id = %s",
-        (otp_code, expiry_iso, admins['admins_id'])
+        "UPDATE admins SET otp = %s, otp_expiry = %s WHERE admin_id = %s",
+        (otp_code, expiry_iso, admins['admin_id'])
     )
     conn.commit()
     conn.close()
@@ -301,14 +301,14 @@ def login_step2():
         return jsonify({'success': False, 'error': 'OTP expired. Please log in again.'})
 
     # ✅ OTP valid → start session
-    session['admins_id'] = admins['admins_id']
+    session['admin_id'] = admins['admin_id']
     session['email'] = admins['email']
     session['first_name'] = admins['first_name']
     session['last_name'] = admins['last_name']
     session['loggedin'] = True
 
     # Clear OTP (for security)
-    cur.execute("UPDATE admins SET otp = NULL, otp_expiry = NULL WHERE admins_id = %s", (admins['admins_id'],))
+    cur.execute("UPDATE admins SET otp = NULL, otp_expiry = NULL WHERE admin_id = %s", (admins['admin_id'],))
     conn.commit()
     conn.close()
 
@@ -331,7 +331,7 @@ def verify_otp():
         flash("⚠️ Database connection failed. Please ensure your MySQL service is running and credentials are set.", "error")
         return redirect(url_for("login_page"))
     cursor = conn.cursor()
-    cursor.execute("SELECT admins_id, otp, otp_expiry, first_name, last_name FROM admins WHERE email=%s", (email,))
+    cursor.execute("SELECT admin_id, otp, otp_expiry, first_name, last_name FROM admins WHERE email=%s", (email,))
     user = cursor.fetchone()
 
     if not user or user[1] != code:
@@ -353,11 +353,11 @@ def verify_otp():
         flash("❌ OTP expired", "error")
         return redirect(url_for("login_page"))
 
-    cursor.execute("UPDATE admins SET otp=NULL, otp_expiry=NULL WHERE admins_id=%s", (user[0],))
+    cursor.execute("UPDATE admins SET otp=NULL, otp_expiry=NULL WHERE admin_id=%s", (user[0],))
     conn.commit()
     conn.close()
 
-    session["admins_id"] = user[0]
+    session["admin_id"] = user[0]
     session["email"] = email
     session["first_name"] = user[3]
     session["last_name"] = user[4]
@@ -444,7 +444,7 @@ def save_verification_code(email, code):
 #----------------------------------------------------
 @app.route('/logout')
 def logout():
-    for k in ['loggedin', 'admins_id', 'email', 'first_name', 'last_name', 'pending_email', 'user_id']:
+    for k in ['loggedin', 'admin_id', 'email', 'first_name', 'last_name', 'pending_email', 'user_id']:
         session.pop(k, None)
     session.clear()  # ensures everything is wiped
     return redirect(url_for('login_page'))
@@ -495,7 +495,7 @@ def create_account():
         cursor = conn.cursor()
 
         try:
-            cursor.execute('SELECT admins_id FROM admins WHERE email = %s', (email,))
+            cursor.execute('SELECT admin_id FROM admins WHERE email = %s', (email,))
             if cursor.fetchone():
                 flash('Account already exists. Please log in.', 'warning')
                 conn.close()
@@ -538,8 +538,11 @@ def create_account():
                     conn.rollback()
                     raise
 
-            # ✅ Send email
-            send_verification_email(email, code)
+            # ✅ Send email (with retry/verification)
+            sent = send_verification_email(email, code)
+            if not sent:
+                flash('Failed to send verification email. Please try again later.', 'danger')
+                return render_template('CreateAccount.html', fname=fname, lname=lname, email=email)
 
             session['pending_email'] = email
             flash('Verification code has been sent to your email.', 'success')
@@ -858,18 +861,18 @@ def dashboard():
 # -----------------------------------------------------------------
 @app.route("/borrow")
 def borrow_page():
-    if 'admins_id' not in session:
+    if 'admin_id' not in session:
         flash("Session expired. Please log in again.")
         return redirect('/login')
 
-    admins_id = session['admins_id']
+    admin_id = session['admin_id']
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         # Fetch admins info
-        cursor.execute("SELECT first_name, last_name FROM admins WHERE admins_id = %s", (admins_id,))
+        cursor.execute("SELECT first_name, last_name FROM admins WHERE admin_id = %s", (admin_id,))
         admins = cursor.fetchone()
         if not admins:
             flash("admins not found.")
@@ -989,11 +992,11 @@ def rfid_scanner():
 @login_required
 def borrow_confirm():
     try:
-        if "admins_id" not in session:
+        if "admin_id" not in session:
             flash("Session expired. Please log in again.")
             return redirect("/login")
 
-        admins_id = session["admins_id"]
+        admin_id = session["admin_id"]
 
         # ✅ Form data
         rfid = request.form.get("rfid")
@@ -1052,13 +1055,13 @@ def borrow_confirm():
             # ✅ Insert transaction with proper date/time objects
             cursor.execute("""
                 INSERT INTO transactions (
-                    user_id, admins_id, instructor_id, instructor_rfid,
+                    user_id, admin_id, instructor_id, instructor_rfid,
                     subject, room, rfid, item_id, borrowed_qty,
                     borrow_date, borrow_time, before_condition
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                borrower["user_id"], admins_id, instructor_id, instructor_rfid,
+                borrower["user_id"], admin_id, instructor_id, instructor_rfid,
                 subject, room, rfid, item["item_id"], int(qty),
                 borrow_date, borrow_time, cond
             ))
@@ -1072,7 +1075,7 @@ def borrow_confirm():
         conn.commit()
 
         # ✅ Fetch admins details
-        cursor.execute("SELECT first_name, last_name FROM admins WHERE admins_id = %s", (admins_id,))
+        cursor.execute("SELECT first_name, last_name FROM admins WHERE admin_id = %s", (admin_id,))
         admins = cursor.fetchone()
 
         # ✅ Prepare summary for PDF/email slip
@@ -1542,10 +1545,10 @@ def process_return():
         returned_now = request.form.getlist("quantity_returned[]")
         condition_returned = request.form.getlist("condition_returned[]")
 
-        # Get admins info from session
-        admins_id = session.get("admins_id")
-        if not admins_id:
-            session["admins_name"] = "admins unknown"
+        # Get admin info from session
+        admin_id = session.get("admin_id")
+        if not admin_id:
+            session["admin_name"] = "admin unknown"
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -1641,13 +1644,13 @@ def process_return():
 
         conn.commit()
 
-        # Fetch admins details if available
-        if admins_id:
-            cursor.execute("SELECT first_name, last_name FROM admins WHERE admins_id = %s", (admins_id,))
+        # Fetch admin details if available
+        if admin_id:
+            cursor.execute("SELECT first_name, last_name FROM admins WHERE admin_id = %s", (admin_id,))
             admins = cursor.fetchone()
-            admins_name = f"{admins['first_name']} {admins['last_name']}" if admins else "admins unknown"
+            admin_name = f"{admins['first_name']} {admins['last_name']}" if admins else "admin unknown"
         else:
-            admins_name = "admins unknown"
+            admin_name = "admin unknown"
 
         # After all items have been processed
         borrow_ids_str = ",".join(returned_borrow_ids)
@@ -2915,11 +2918,11 @@ def update_admins_account():
 
     # Use %s instead of ? for MySQL
     try:
-        cursor.execute("SELECT password FROM admins WHERE admins_id = %s", (session['admins_id'],))
+        cursor.execute("SELECT password FROM admins WHERE admin_id = %s", (session['admin_id'],))
     except mysql.connector.errors.ProgrammingError as e:
         print(f"⚠️ ProgrammingError in update_admins_account: {e}. Trying to init DB and retry.")
         init_db()
-        cursor.execute("SELECT password FROM admins WHERE admins_id = %s", (session['admins_id'],))
+        cursor.execute("SELECT password FROM admins WHERE admin_id = %s", (session['admin_id'],))
     admins = cursor.fetchone()
 
     if not admins:
@@ -2935,12 +2938,12 @@ def update_admins_account():
     if new_password:
         hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         cursor.execute("""
-            UPDATE admins SET name=%s, email=%s, password=%s WHERE admins_id=%s
-        """, (name, email, hashed_pw, session['admins_id']))
+            UPDATE admins SET name=%s, email=%s, password=%s WHERE admin_id=%s
+        """, (name, email, hashed_pw, session['admin_id']))
     else:
         cursor.execute("""
-            UPDATE admins SET name=%s, email=%s WHERE admins_id=%s
-        """, (name, email, session['admins_id']))
+            UPDATE admins SET name=%s, email=%s WHERE admin_id=%s
+        """, (name, email, session['admin_id']))
 
     conn.commit()
     conn.close()
@@ -3047,7 +3050,7 @@ def save_verification_code(email, code):
 @app.route('/kiosk_page')
 @login_required
 def kiosk_page():
-    if 'admins_id' not in session:
+    if 'admin_id' not in session:
         return redirect(url_for('login_page'))
     return render_template('KioskSelection.html')
 #--------------------------------------------------
@@ -3056,18 +3059,18 @@ def kiosk_page():
 @app.route("/kiosk_borrow")
 @login_required
 def kiosk_borrow_page():
-    if 'admins_id' not in session:
+    if 'admin_id' not in session:
         flash("Session expired. Please log in again.")
         return redirect('/login')
 
-    admins_id = session['admins_id']
+    admin_id = session['admin_id']
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         # Fetch admins info
-        cursor.execute("SELECT first_name, last_name FROM admins WHERE admins_id = %s", (admins_id,))
+        cursor.execute("SELECT first_name, last_name FROM admins WHERE admin_id = %s", (admin_id,))
         admins = cursor.fetchone()
         if not admins:
             flash("admins not found.")
@@ -3186,11 +3189,11 @@ def kiosk_rfid_scanner():
 @login_required
 def kiosk_borrow_confirm():
     try:
-        if "admins_id" not in session:
+        if "admin_id" not in session:
             flash("Session expired. Please log in again.")
             return redirect("/login")
 
-        admins_id = session["admins_id"]
+        admin_id = session["admin_id"]
 
         # ✅ Form data
         rfid = request.form.get("rfid")
@@ -3249,13 +3252,13 @@ def kiosk_borrow_confirm():
             # ✅ Insert transaction with proper date/time objects
             cursor.execute("""
                 INSERT INTO transactions (
-                    user_id, admins_id, instructor_id, instructor_rfid,
+                    user_id, admin_id, instructor_id, instructor_rfid,
                     subject, room, rfid, item_id, borrowed_qty,
                     borrow_date, borrow_time, before_condition
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                borrower["user_id"], admins_id, instructor_id, instructor_rfid,
+                borrower["user_id"], admin_id, instructor_id, instructor_rfid,
                 subject, room, rfid, item["item_id"], int(qty),
                 borrow_date, borrow_time, cond
             ))
@@ -3269,7 +3272,7 @@ def kiosk_borrow_confirm():
         conn.commit()
 
         # ✅ Fetch admins details
-        cursor.execute("SELECT first_name, last_name FROM admins WHERE admins_id = %s", (admins_id,))
+        cursor.execute("SELECT first_name, last_name FROM admins WHERE admin_id = %s", (admin_id,))
         admins = cursor.fetchone()
 
         # ✅ Prepare summary for PDF/email slip
@@ -3284,7 +3287,7 @@ def kiosk_borrow_confirm():
             "room": room,
             "date": borrow_date.strftime("%m/%d/%Y").lstrip("0").replace("/0", "/"),
             "time": borrow_time.strftime("%I:%M %p").lstrip("0"),
-            "admins_name": f"{admins['first_name']} {admins['last_name']}",
+            "admin_name": f"{admins['first_name']} {admins['last_name']}",
             "items": [
                 {"equipment": eq, "quantity": qty, "condition": cond}
                 for eq, qty, cond in zip(equipment_list, quantity_list, condition_list)
@@ -3561,10 +3564,10 @@ def kiosk_process_return():
         returned_now = request.form.getlist("quantity_returned[]")
         condition_returned = request.form.getlist("condition_returned[]")
 
-        # Get admins info from session
-        admins_id = session.get("admins_id")
-        if not admins_id:
-            session["admins_name"] = "admins unknown"
+        # Get admin info from session
+        admin_id = session.get("admin_id")
+        if not admin_id:
+            session["admin_name"] = "admin unknown"
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -3660,13 +3663,13 @@ def kiosk_process_return():
 
         conn.commit()
 
-        # Fetch admins details if available
-        if admins_id:
-            cursor.execute("SELECT first_name, last_name FROM admins WHERE admins_id = %s", (admins_id,))
+        # Fetch admin details if available
+        if admin_id:
+            cursor.execute("SELECT first_name, last_name FROM admins WHERE admin_id = %s", (admin_id,))
             admins = cursor.fetchone()
-            admins_name = f"{admins['first_name']} {admins['last_name']}" if admins else "admins unknown"
+            admin_name = f"{admins['first_name']} {admins['last_name']}" if admins else "admin unknown"
         else:
-            admins_name = "admins unknown"
+            admin_name = "admin unknown"
 
         # After all items have been processed
         borrow_ids_str = ",".join(returned_borrow_ids)
