@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMAK-LEBS</title>
+
+    <!-- font link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='DbDesign.css') }}">
+
+</head>
+
+<!-- BODY -->
+<body>
+<!-- Top Header -->
+  <header class="topbar">
+      <img src="{{ url_for('static', filename='Icons/Umak.png') }}">
+      <h1>University of Makati - LEBS</h1>
+  </header>
+
+<!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="profMenu" onclick="showProfile()"> <!-- Profile -->
+      <div class="profIcon">
+        <img src="{{ url_for('static', filename='Icons/Profile.png') }}" alt="Umak Logo">
+      </div>
+      <div id="logoutDropdown" class="logout-dropdown">
+        <a href="{{ url_for('logout') }}" class="menu-item">
+            <img src="{{ url_for('static', filename='Icons/LogOut Icon.png') }}">
+            Log Out
+        </a>
+
+        <div class="divider"></div>
+
+        <button class="menu-item" onclick="openModal('manageAccountModal')">
+            <img src="{{ url_for('static', filename='Icons/Profile.png') }}">
+            Manage Account
+        </button>
+      </div>
+    </div>
+    
+    <div class="nav-item active" onclick="showSection('dashboard')">
+        <div class="nav-icon">
+          <img src="{{ url_for('static', filename='Icons/Dashboard.png') }}" alt="Dashboard Icon" />
+        </div>
+        <span>Dashboard</span>
+    </div>
+
+    <a href="{{ url_for('borrow_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Borrow.png') }}" alt="Borrow Icon" />
+      </div>
+      <span>Borrow</span>
+    </a>
+
+    <a href="{{ url_for('rfid_scanner_return') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Return.png') }}" alt="Return Icon" />
+      </div>
+      <span>Return</span>
+    </a>
+
+    <a href="{{ url_for('inventory_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Inventory.png') }}" alt="Inventory Icon" />
+      </div>
+      <span>Inventory</span>
+    </a>
+
+    <a href="{{ url_for('users_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Users.png') }}" alt="Users Icon" />
+      </div>
+      <span>Users</span>
+    </a>
+
+    <a href="{{ url_for('history_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/History.png') }}" alt="History Icon" />
+      </div>
+      <span>History</span>
+    </a>
+
+    <a href="{{ url_for('report_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Report.png') }}" alt="Report Icon" />
+      </div>
+      <span>Reports</span>
+    </a>
+
+    <a href="{{ url_for('kiosk_page') }}" target="_blank" class="nav-item" title="Open Kiosk in New Tab">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Kiosk Icon.png') }}" alt="Kiosk Icon" />
+      </div>
+      <span> Kiosk</span>
+    </a>
+
+  </aside>
+
+<!-- Main Features of the frame -->
+<!-- Main Content -->
+  <main class="mainFeat">
+    <h1 class="dbTitle">Dashboard</h1> <!-- Title of the main features -->
+
+    <!-- Statistics Panel -->
+    <div class="stats-panel">
+        <div class="statCard">
+            <div class="statNum">{{ stats.users }}</div>
+            <div class="statLabel">Users</div>
+        </div>
+        <div class="statCard">
+            <div class="statNum">{{ stats.total_trans }}</div>
+            <div class="statLabel">Transactions</div>
+        </div>
+        <div class="statCard">
+            <div class="statNum">{{ stats.borrowed }}</div>
+            <div class="statLabel">Borrowed</div>
+        </div>
+        <div class="statCard">
+            <div class="statNum">{{ stats.total_returned }}</div>
+            <div class="statLabel">Returned</div>
+        </div>
+    </div>
+
+    <!-- Content Grid -->
+      <div class="content">
+        <!-- History Section -->
+        <div class="secCard">
+        <h2 class="secTitle">History</h2>
+        <!-- check if history is completely empty -->
+                {% if history and history|length > 0 %}
+                  {% for date, records in history.items() %} <!-- check if history has dates, but a specific date has no records -->
+                    <div class="historyDate">{{ date }}</div>
+
+                    {% if records and records|length > 0 %}
+                      {% for record in records %}
+                        <div class="historyEntry">
+                          <div class="historyDet">
+                            <div class="detailsRight">
+                              <span class="historyTime">{{ record.time }}</span>
+                              <span class="historyItem">{{ record.tool }}</span>
+                              <span class="historyName">{{ record.user }}</span>
+                            </div>
+                            <div class="status">
+                              {% if record.status == 'borrowed' %}
+                                <span class="status-badge status-borrowed">Borrowed {{ record.quantity }}</span>
+                              {% elif record.status == 'partial' %}
+                                <span class="status-badge status-partial">
+                                  Returned {{ record.returned_qty }}/{{ record.quantity }}
+                                </span>
+                              {% else %}
+                                <span class="status-badge status-returned">
+                                  Returned all ({{ record.quantity }})
+                                </span>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    {% else %}
+                      <p>No transactions for this date.</p>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <p>No transactions recorded.</p>
+                {% endif %}
+        </div>
+      <!-- Summary Report Section -->
+      <div class="chartSecCard">
+          <div class="report-header">
+              <h2 class="secTitle">Summary Report</h2>
+              <div class="report-tabs">
+                  <div class="tab active" onclick="switchTab(this, 'week')">Week</div>
+                  <div class="tab" onclick="switchTab(this, 'month')">Month</div>
+                  <div class="tab" onclick="switchTab(this, 'year')">Year</div>
+              </div>
+          </div>
+          <!-- chart for report -->
+          <div class="chart-container">
+            <div class="y-axis"></div>
+            <!-- gridlines -->
+            <div class="chart-grid"></div>
+            <!-- scroll wrapper for month -->
+            <div class="chart-scroll">
+              <div id="chart" class="chart-inner"></div>
+    </div>
+    <!-- Manage Account Modal -->
+    <div class="adminModal" id="manageAccountModal">
+      <div class="admin-content">
+        <div class="modal-header">
+          <h2>Manage Account</h2>
+          <button class="close-btn" onclick="closeModal('manageAccountModal')">&times;</button>
+        </div>
+
+        <form id="manageAccountForm" onsubmit="event.preventDefault(); saveAdminAccount();">
+          <div class="form-group">
+            <label for="adminFirstName">First Name</label>
+            <input type="text" id="adminFirstName" class="form-input" placeholder="Enter your first name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminLastName">Last Name</label>
+            <input type="text" id="adminLastName" class="form-input" placeholder="Enter your last name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminEmail">Email</label>
+            <input type="email" id="adminEmail" class="form-input" placeholder="Enter your email" required>
+          </div>
+
+          <hr style="margin: 10px 0;">
+
+          <div class="form-group">
+            <label for="currentAdminPassword">Current Password</label>
+            <input type="password" id="currentAdminPassword" class="form-input" placeholder="Enter current password" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminPassword">New Password</label>
+            <input type="password" id="adminPassword" class="form-input" placeholder="Leave blank to keep current password">
+          </div>
+
+          <div class="form-group">
+            <label for="confirmAdminPassword">Confirm New Password</label>
+            <input type="password" id="confirmAdminPassword" class="form-input" placeholder="Confirm new password">
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-cancel" onclick="closeModal('manageAccountModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+          <!-- Hidden JSON data for JS to read -->
+          <script>
+            // Data injected from Flask
+            const weekData = {{ weekly_chart | tojson }} || [];
+            const weekLabels = {{ weekly_labels | tojson }} || ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+            const monthData = {{ monthly_chart | tojson }} || [];
+            const monthLabels = {{ monthly_labels | tojson }} || [];
+            const yearData = {{ yearly_chart | tojson }} || [];
+            const yearLabels = {{ yearly_labels | tojson }} || [];
+
+            // Current active dataset
+            let activeType = 'week';
+
+            function renderChart(type) {
+              const chart = document.getElementById('chart');
+              chart.innerHTML = '';
+              let data, labels;
+              if (type === 'week') {
+                data = weekData;
+                labels = weekLabels;
+              } else if (type === 'month') {
+                data = monthData;
+                labels = monthLabels;
+              } else {
+                data = yearData;
+                labels = yearLabels;
+              }
+
+              const maxv = Math.max(...(data.length ? data : [1]));
+              const today = new Date();
+              const todayDay = String(today.getDate());
+
+              // toggle chart mode classes
+              const chartScroll = document.querySelector('.chart-scroll');
+              const chartEl = document.getElementById('chart');
+              if (type === 'month') {
+                chartScroll.style.overflowX = 'auto';
+                chartEl.classList.remove('chart-week');
+                // Wider per label since text is longer (e.g. "Week 1 (Oct 1–6)")
+                chartEl.style.minWidth = (labels.length * 80) + 'px'; // base width
+                chartEl.style.gap = '100px'; // make sure the spacing applies
+              } else if (type === 'year') {
+                chartScroll.style.overflowX = 'auto'; // ✅ enables horizontal scroll
+                chartEl.classList.remove('chart-week');
+                chartEl.style.minWidth = 'auto'; // ✅ enough width to scroll
+                chartEl.style.gap = '30px'; // ✅ consistent spacing between months
+              }
+              else {
+                chartScroll.style.overflowX = 'hidden';
+                chartEl.classList.add('chart-week');
+                chartEl.style.minWidth = 'auto';
+              }
+
+              for (let i = 0; i < labels.length; i++) {
+                const val = data[i] || 0;
+                const height = Math.round((val / (maxv > 0 ? maxv : 1)) * 140);
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.height = height + 'px';
+
+                // mark today's bar in month view
+                if (type === 'month' && labels[i] === todayDay) {
+                  bar.classList.add('today');
+                }
+
+                const tooltip = document.createElement('div');
+                tooltip.className = 'chart-tooltip';
+                tooltip.innerText = `${labels[i]} — ${val}`;
+
+                const v = document.createElement('div');
+                v.className = 'chart-value';
+                v.innerText = val;
+
+                const l = document.createElement('div');
+                l.className = 'chart-label';
+                l.innerText = labels[i];
+
+                bar.appendChild(tooltip);
+                bar.appendChild(v);
+                bar.appendChild(l);
+                chart.appendChild(bar);
+              }
+
+              // If month mode, ensure wrapper scrolls to show today
+              if (type === 'month') {
+                const todayEl = document.querySelector('.chart-bar.today');
+                if (todayEl) {
+                  todayEl.scrollIntoView({behavior: 'smooth', inline: 'center'});
+                }
+              }
+            }
+
+            function switchTab(el, type) {
+              // update active tab UI
+              document.querySelectorAll('.report-tabs .tab').forEach(t => t.classList.remove('active'));
+              el.classList.add('active');
+              activeType = type;
+              renderChart(type);
+            }
+
+            // initial render
+            document.addEventListener('DOMContentLoaded', function(){
+              // find the tab elements and attach click handlers (if they exist already)
+              document.querySelectorAll('.report-tabs .tab').forEach(tab => {
+                tab.addEventListener('click', function(){
+                  const type = this.textContent.trim().toLowerCase();
+                  switchTab(this, type);
+                });
+              });
+              renderChart('week');
+            });
+
+            // Log Out Script
+            function showProfile() {
+              const dropdown = document.getElementById("logoutDropdown");
+              // Toggle dropdown visibility
+              dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+            }
+
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+              const dropdown = document.getElementById("logoutDropdown");
+              const profile = document.querySelector('.profMenu');
+              if (!dropdown.contains(event.target) && !profile.contains(event.target)) {
+                dropdown.style.display = "none";
+              }
+            });
+
+            // Prevent going back after logout
+            if (window.history && window.history.pushState) {
+              window.history.pushState(null, null, window.location.href);
+              window.onpopstate = function() {
+                window.history.pushState(null, null, window.location.href);
+              };
+            }
+          </script>
+          </div>
+      </div>
+  </main>
+  <!-- End of main faetures -->
+   <!-- Socket.IO Notification Listener -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+    const socket = io("http://192.168.1.8:5000");
+    socket.on("connect", () => {
+      console.log("✅ Connected to Socket.IO server");
+    });
+
+    socket.on("new_transaction", data => {
+      console.log("📩 New transaction received:", data);
+      const confirmed = confirm(`New transaction by ${data.name}!\nOpen details?`);
+      if (confirmed) {
+        window.open(`/transaction_success/${data.transaction_number}`, "_blank");
+      }
+    });
+ 
+        // Confirm Return
+    function confirmReturn(pendingReturnId) {
+        if (confirm('Are you sure you want to confirm this return?')) {
+            fetch(`/admin/confirm-return/${pendingReturnId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Return confirmed successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error confirming return');
+            });
+        }
+    }
+
+    // Reject Return
+    function rejectReturn(pendingReturnId) {
+        if (confirm('Are you sure you want to reject this return?')) {
+            fetch(`/admin/reject-return/${pendingReturnId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Return rejected successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error rejecting return');
+            });
+        }
+    }
+
+    // View Return Items
+    function viewReturnDetails(pendingId, items) {
+      let details = `<h3>Return #${String(pendingId).padStart(7, '0')}</h3><table border="1" style="width:100%; border-collapse: collapse; margin-top:10px;">
+        <tr><th>Equipment</th><th>Quantity</th><th>Condition</th></tr>`;
+
+      for (const item of items) {
+        details += `<tr>
+          <td style="padding:6px;">${item.item_name}</td>
+          <td style="padding:6px;">${item.quantity}</td>
+          <td style="padding:6px;">${item.condition}</td>
+        </tr>`;
+      }
+      details += `</table>`;
+
+      const w = window.open("", "_blank", "width=600,height=400");
+      w.document.write(`<html><head><title>Return Details</title></head><body>${details}</body></html>`);
+    }
+
+    function closeReturnModal() {
+      document.getElementById('returnModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('returnModal');
+        if (event.target === modal) {
+            closeReturnModal();
+        }
+    }
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    function openModal(id) {
+      document.getElementById(id).style.display = "flex";
+
+      if (id === "manageAccountModal") {
+        fetch("/get_admin_account")
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              document.getElementById("adminFirstName").value = data.first_name || "";
+              document.getElementById("adminLastName").value = data.last_name || "";
+              document.getElementById("adminEmail").value = data.email || "";
+            } else {
+              alert("⚠️ Failed to load account info.");
+            }
+          })
+          .catch(err => console.error("Error fetching admin info:", err));
+      }
+    }
+
+    function saveAdminAccount() {
+      const firstName = document.getElementById("adminFirstName").value.trim();
+      const lastName = document.getElementById("adminLastName").value.trim();
+      const email = document.getElementById("adminEmail").value.trim();
+      const currentPassword = document.getElementById("currentAdminPassword").value;
+      const newPassword = document.getElementById("adminPassword").value;
+      const confirmPassword = document.getElementById("confirmAdminPassword").value;
+
+      if (!firstName || !lastName || !email || !currentPassword) {
+        alert("⚠️ All required fields must be filled.");
+        return;
+      }
+
+      if (newPassword && newPassword !== confirmPassword) {
+        alert("⚠️ New passwords do not match.");
+        return;
+      }
+
+      fetch("/update_admin_account", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("✅ Account details updated successfully!");
+          closeModal("manageAccountModal");
+          document.getElementById("manageAccountForm").reset();
+        } else {
+          alert("❌ " + data.error);
+        }
+      })
+      .catch(err => console.error("Error updating account:", err));
+    }
+  </script>
+  <!-- Modal for Return Details -->
+  <div id="returnModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+      <div style="background: white; margin: 10% auto; padding: 20px; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3 style="margin: 0;">Return Items Details</h3>
+              <button onclick="closeReturnModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">×</button>
+          </div>
+          <div id="modalContent"></div>
+          <div style="text-align: right; margin-top: 20px;">
+              <button style="background: #95a5a6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;" 
+                      onclick="closeReturnModal()">Close</button>
+          </div>
+      </div>
+  </div>
+</body>
+</html>

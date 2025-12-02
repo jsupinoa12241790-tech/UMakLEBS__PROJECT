@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMAK-LEBS</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='Borrowstyle.css') }}">
+</head>
+<body>
+  <!-- Topbar --> 
+  <header class="kiosk-topbar">
+      <button type="button" class="BtnKioskBack" onclick="goBackToSelection()">< Back</button>
+      <img src="{{ url_for('static', filename='Icons/Umak.png') }}">
+      <h1>University of Makati - LEBS</h1>
+  </header>
+  <!-- Main Content -->
+  <div class="kiosk-main-content">
+    <div class="kiosk-table-container">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" placeholder="Search for equipment..." id="searchInput">
+      </div>
+
+      <div class="table-filters">
+        <div>
+          <label>Sort By:</label>
+          <select class="filter-select" id="borrowSort" onchange="sortEquipment()">
+            <option value="" selected disabled>-- Select Sort --</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+            <option value="name">Alphabetical Name</option>
+          </select>
+        </div>
+        <div>
+          <label>Filter Type:</label>
+          <select class="itemTypeFilter" id="typeFilter" onchange="filterEquipment()">
+            <option value="all">All Types</option>
+            {% for t in types %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="margin-left:auto;">
+          <button class="btn btnBorrow" onclick="borrowSelected()">Borrow</button>
+        </div>
+      </div>
+
+      <!-- Equipment Cards Section -->
+      <div class="equipment-container" id="equipmentCards">
+        <!-- CARD FOR EACH EQUIPMENT -->
+        {% for eq in equipment %}
+        <div class="equipment-card" 
+             data-name="{{ eq.name|lower }}" 
+             data-type="{{ eq.type|default('') }}">
+          <!-- CHECKBOX -->
+          <div class="checkbox-container">
+            <input 
+              type="checkbox" 
+              class="equip-checkbox" 
+              value="{{ eq.name }}"
+              {% if eq.available == 0 %}disabled{% endif %}>
+          </div>
+          <!-- IMAGE -->
+          <div class="equipment-image">
+            <div class="image-wrapper">
+              {% if eq.available == 0 %}
+                <div class="not-available-label">Not Available</div>
+              {% endif %}
+              <img src="{{ url_for('static', filename=eq.image_path.replace('static/', '')) }}"
+                  alt="{{ eq.name }}"
+                  onerror="this.src='{{ url_for('static', filename='Icons/default.png') }}'">
+            </div>
+          </div>
+          <!-- DETAILS -->
+          <h3>{{ eq.name }}</h3>
+          <p><strong>Type:</strong> {{ eq.type|default('N/A') }}</p>
+          <p><strong>All Quantity:</strong> {{ eq.all_quantity if eq.all_quantity is defined else eq.available + (eq.on_borrowed if eq.on_borrowed is defined else 0) }}</p>
+          <p><strong>On Borrowed:</strong> {{ eq.on_borrowed if eq.on_borrowed is defined else 0 }}</p>
+          <p><strong>Available:</strong> <span class="status {{ 'available' if eq.available > 0 else 'unavailable' }}">{{ eq.available }}</span></p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Account Modal -->
+  <div class="modal" id="manageAccountModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Manage Account</h2>
+        <button class="close-btn" onclick="closeModal('manageAccountModal')">&times;</button>
+      </div>
+
+      <form id="manageAccountForm" onsubmit="event.preventDefault(); saveAdminAccount();">
+        <div class="form-group">
+          <label for="adminFirstName">First Name</label>
+          <input type="text" id="adminFirstName" class="form-input" placeholder="Enter your first name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="adminLastName">Last Name</label>
+          <input type="text" id="adminLastName" class="form-input" placeholder="Enter your last name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="adminEmail">Email</label>
+          <input type="email" id="adminEmail" class="form-input" placeholder="Enter your email" required>
+        </div>
+
+        <hr style="margin: 10px 0;">
+
+        <div class="form-group">
+          <label for="currentAdminPassword">Current Password</label>
+          <input type="password" id="currentAdminPassword" class="form-input" placeholder="Enter current password" required>
+        </div>
+
+        <div class="form-group">
+          <label for="adminPassword">New Password</label>
+          <input type="password" id="adminPassword" class="form-input" placeholder="New passsword">
+        </div>
+
+        <div class="form-group">
+          <label for="confirmAdminPassword">Confirm New Password</label>
+          <input type="password" id="confirmAdminPassword" class="form-input" placeholder="Confirm new password">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" onclick="closeModal('manageAccountModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+    <!-- Edit Borrow Item Modal -->
+  <div class="modal" id="editBorrowModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit Borrow Item</h2>
+        <button class="close-btn" onclick="closeModal('editBorrowModal')">&times;</button>
+      </div>
+      <form class="modal-form" onsubmit="event.preventDefault(); saveEditBorrowItem();">
+        <div class="form-group">
+          <label class="form-label">Equipment</label>
+          <div class="form-value" id="editBorrowName"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editBorrowQty">Quantity</label>
+          <input type="number" id="editBorrowQty" min="1" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editBorrowCondition">Condition</label>
+          <select id="editBorrowCondition" class="form-input" required>
+            <option value="">Select Condition</option>
+            <option value="New / Unused">New / Unused</option>
+            <option value="Like New">Like New</option>
+            <option value="Excellent">Excellent</option>
+            <option value="Very Good">Very Good</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Retired">Retired</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" onclick="closeModal('editBorrowModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Borrow Details Modal -->
+  <div class="modal" id="borrowDetailsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Equipment Details</h2>
+        <button class="close-btn" onclick="closeModal('borrowDetailsModal')">&times;</button>
+      </div>
+      <form class="modal-form" onsubmit="event.preventDefault(); addToBorrowList();">
+        <div class="form-group">
+          <label class="form-label" for="subjectField">Subject</label>
+          <input type="text" id="subjectField" name="subject" class="form-input" placeholder="Enter subject name" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="roomField">Room</label>
+          <input type="text" id="roomField" name="room" class="form-input" placeholder="Enter room number" required>
+        </div>
+        <div class="form-group" style="position: relative;">
+          <label class="form-label" for="instructorRfidField">Instructor/Admin ID</label>
+          <input type="password" id="instructorRfidField" name="instructor_rfid"
+                class="form-input" placeholder="Scan instructor ID"
+                oninput="handleRFIDScan()" autocomplete="off" required>
+          <span id="rfidStatusLabel"
+                style="display:none; position:absolute; right:10px; top:36px; font-size:0.9em; font-weight:500; color:green;">
+            ✅ RFID Scanned
+          </span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Equipment</label>
+          <div class="form-value" id="selectedEquipment"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="quantityField">Quantity</label>
+          <input type="number" id="quantityField" min="1" value="1" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="conditionField">Condition Before Borrowing</label>
+          <select id="conditionField" class="form-input" required>
+            <option value="">Select Condition</option>
+            <option value="Brand New">Brand New</option>
+            <option value="Good Condition">Good Condition</option>
+            <option value="Functional with Minor Wear">Functional with Minor Wear</option>
+            <option value="Needs Repair">Needs Repair</option>
+            <option value="For Replacement / Retired">For Replacement / Retired</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('borrowDetailsModal')">Back</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Borrow List Modal -->
+  <div class="modal" id="borrowListModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Borrow List</h2>
+        <button class="close-btn" onclick="closeModal('borrowListModal')">&times;</button>
+      </div>
+      <div id="borrowList" class="borrow-list"></div>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="restartBorrowProcess()">Cancel</button>
+        <button class="btn btn-select-other" onclick="closeModal('borrowListModal')">Select Other</button>
+        <button class="btn btn-primary" onclick="openRFIDModal()">Borrow</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RFID Modal -->
+  <div class="modal" id="rfidModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>RFID Verification</h2>
+        <button class="close-btn" onclick="closeModal('rfidModal')">&times;</button>
+      </div>
+      <p id="rfidStatus" class="rfid-status">Please scan RFID</p>
+      <input type="text" id="rfidInput" placeholder="Scan RFID only" class="rfid-input" readonly>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('rfidModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="verifyRFID()">Verify</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    let borrowCart = [];
+    let selectedEquipments = [];
+    let currentEquipIndex = 0;
+    let editBorrowIdx = null;
+    let isSubmitting = false; // ✅ Prevents multiple submits
+
+    function openBorrowDetails(name, available) {
+      document.getElementById("selectedEquipment").innerText = name;
+      document.getElementById("quantityField").max = available;
+      document.getElementById("borrowDetailsModal").style.display = "flex";
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    function addToBorrowList() {
+      const name = document.getElementById("selectedEquipment").innerText;
+      const qty = document.getElementById("quantityField").value;
+      const condition = document.getElementById("conditionField").value;
+      const subject = document.getElementById("subjectField").value;
+      const room = document.getElementById("roomField").value;
+      const instructorRfid = document.getElementById("instructorRfidField").value;
+
+      if (!qty || !condition || !subject || !room || !instructorRfid) {
+        alert("⚠️ Please complete all required fields.");
+        return;
+      }
+
+      borrowCart.push({ name, qty, condition, subject, room, instructorRfid });
+
+      currentEquipIndex++;
+      if (currentEquipIndex < selectedEquipments.length) {
+        const next = selectedEquipments[currentEquipIndex];
+        document.getElementById("quantityField").value = 1;
+        document.getElementById("conditionField").value = "";
+        openBorrowDetails(next.name, next.available);
+      } else {
+        closeModal("borrowDetailsModal");
+        renderBorrowList();
+        document.getElementById("borrowListModal").style.display = "flex";
+      }
+    }
+
+    function renderBorrowList() {
+      const list = document.getElementById("borrowList");
+      if (borrowCart.length === 0) {
+        list.innerHTML = '<div class="borrow-list-empty">No items in borrow list.</div>';
+        return;
+      }
+      let table = `<table class="borrow-list-table"><thead><tr><th>Item</th><th>Amount</th><th>Condition</th><th></th></tr></thead><tbody>`;
+      borrowCart.forEach((item, index) => {
+        table += `
+          <tr>
+            <td>${item.name}</td>
+            <td>${item.qty}</td>
+            <td>${item.condition}</td>
+            <td>
+              <button class="menu-btn" onclick="editBorrowItem(${index})">🖋️</button>
+              <button class="menu-btn" onclick="deleteBorrowItem(${index})">🗑️</button>
+            </td>
+          </tr>`;
+      });
+      table += '</tbody></table>';
+      list.innerHTML = table;
+    }
+
+    function editBorrowItem(idx) {
+      const item = borrowCart[idx];
+      editBorrowIdx = idx;
+      document.getElementById("editBorrowName").innerText = item.name;
+      document.getElementById("editBorrowQty").value = item.qty;
+      document.getElementById("editBorrowCondition").value = item.condition;
+      document.getElementById("editBorrowModal").style.display = "flex";
+    }
+
+    function saveEditBorrowItem() {
+      if (editBorrowIdx === null) return;
+      const qty = parseInt(document.getElementById("editBorrowQty").value, 10);
+      const condition = document.getElementById("editBorrowCondition").value;
+      if (!qty || !condition) {
+        alert("Please enter amount and select condition");
+        return;
+      }
+      borrowCart[editBorrowIdx].qty = qty;
+      borrowCart[editBorrowIdx].condition = condition;
+      renderBorrowList();
+      closeModal('editBorrowModal');
+      editBorrowIdx = null;
+    }
+
+    function deleteBorrowItem(idx) {
+      borrowCart.splice(idx, 1);
+      renderBorrowList();
+    }
+
+    function restartBorrowProcess() {
+      borrowCart = [];
+      renderBorrowList();
+      closeModal('borrowListModal');
+    }
+
+    function verifyRFID() {
+      const rfid = document.getElementById("rfidInput").value;
+      if (!rfid) {
+        alert("Please scan or enter RFID");
+        return;
+      }
+      document.getElementById("rfidStatus").innerText = "RFID Verified! Processing...";
+      setTimeout(() => {
+        alert("Borrow process completed successfully!");
+        borrowCart = [];
+        document.getElementById("rfidInput").value = "";
+        closeModal("rfidModal");
+      }, 1500);
+    }
+
+    function filterEquipment() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const type = document.getElementById('typeFilter').value;
+      const cards = document.querySelectorAll('.equipment-card');
+      cards.forEach(card => {
+        const name = card.getAttribute('data-name');
+        const eqType = card.getAttribute('data-type');
+        const matchesName = name.includes(search);
+        const matchesType = (type === 'all' || eqType === type);
+        card.style.display = (matchesName && matchesType) ? '' : 'none';
+      });
+    }
+
+    function sortEquipment() {
+      const sortBy = document.getElementById('borrowSort').value;
+      const container = document.getElementById('equipmentCards');
+      const cards = Array.from(container.children);
+
+      // Always make all cards visible before sorting
+      cards.forEach(card => card.style.display = '');
+
+      if (sortBy === 'unavailable') {
+        cards.forEach(card => {
+          const available = parseInt(card.querySelector('.status').textContent.trim(), 10) || 0;
+          card.style.display = (available <= 0) ? '' : 'none';
+        });
+        return;
+      }
+
+      if (sortBy === 'available') {
+        cards.sort((a, b) => {
+          const aAvail = parseInt(a.querySelector('.status').textContent.trim(), 10) || 0;
+          const bAvail = parseInt(b.querySelector('.status').textContent.trim(), 10) || 0;
+          return bAvail - aAvail; // descending
+        });
+      } else if (sortBy === 'name') {
+        cards.sort((a, b) => {
+          const aName = a.querySelector('h3').textContent.trim().toLowerCase();
+          const bName = b.querySelector('h3').textContent.trim().toLowerCase();
+          return aName.localeCompare(bName);
+        });
+      }
+
+      // Append in sorted order
+      cards.forEach(card => container.appendChild(card));
+    }
+
+    document.getElementById('searchInput').addEventListener('keyup', filterEquipment);
+
+    function toggleAllCheckboxes(mainCheckbox) {
+      document.querySelectorAll('.equip-checkbox').forEach(cb => cb.checked = mainCheckbox.checked);
+    }
+
+    function borrowSelected() {
+      const selected = document.querySelectorAll('.equip-checkbox:checked');
+      if (selected.length === 0) {
+        alert("⚠️ Please select at least one equipment to borrow.");
+        return;
+      }
+
+      selectedEquipments = [];
+      selected.forEach(cb => {
+        const card = cb.closest('.equipment-card');
+        const name = card.querySelector('h3').textContent.trim();
+        const availableText = card.querySelector('.status').textContent.trim();
+        const available = parseInt(availableText) || 0;
+
+        selectedEquipments.push({ name, available });
+      });
+
+      currentEquipIndex = 0;
+      openBorrowDetails(selectedEquipments[0].name, selectedEquipments[0].available);
+    }
+    // --- Auto-enable/disable Borrow button based on checkboxes ---
+    document.addEventListener("DOMContentLoaded", function () {
+      const borrowBtn = document.getElementById("borrowSelectedBtn");
+      const checkboxes = document.querySelectorAll(".equip-checkbox");
+
+      function updateBorrowButton() {
+        const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+        borrowBtn.disabled = !anyChecked;
+
+        if (anyChecked) {
+          borrowBtn.classList.add("active");
+        } else {
+          borrowBtn.classList.remove("active");
+        }
+      }
+
+      checkboxes.forEach(cb => cb.addEventListener("change", updateBorrowButton));
+      updateBorrowButton(); // initialize state
+    });
+    document.getElementById('searchInput').addEventListener('keyup', filterEquipment);
+
+    // ✅ Fixed openRFIDModal to prevent 3× submission
+    function openRFIDModal() {
+      if (isSubmitting) return; // prevents double/triple clicks
+      isSubmitting = true;
+
+      closeModal("borrowListModal");
+
+      if (borrowCart.length === 0) {
+        alert("⚠️ No items to borrow.");
+        isSubmitting = false;
+        return;
+      }
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "/kiosk_rfid_scanner";
+
+      borrowCart.forEach(item => {
+        form.innerHTML += `
+          <input type="hidden" name="equipment[]" value="${item.name}">
+          <input type="hidden" name="quantity[]" value="${item.qty}">
+          <input type="hidden" name="before_condition[]" value="${item.condition}">
+          <input type="hidden" name="subject" value="${item.subject}">
+          <input type="hidden" name="room" value="${item.room}">
+          <input type="hidden" name="instructor_rfid" value="${item.instructorRfid}">
+        `;
+      });
+
+      document.body.appendChild(form);
+
+      // small delay ensures modal closes cleanly before submit
+      setTimeout(() => form.submit(), 200);
+    }
+    // Log Out Script
+    function showProfile() {
+      const dropdown = document.getElementById("logoutDropdown");
+      // Toggle dropdown visibility
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    }
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById("logoutDropdown");
+      const profile = document.querySelector('.profMenu');
+      if (!dropdown.contains(event.target) && !profile.contains(event.target)) {
+        dropdown.style.display = "none";
+      }
+    });
+
+    // Prevent going back after logout
+    if (window.history && window.history.pushState) {
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = function() {
+            window.history.pushState(null, null, window.location.href);
+        };
+    }
+
+    setInterval(() => scannerCatch.focus(), 1000);
+
+    // ✅ Go back to kiosk main page
+    function goBackToSelection() {
+        window.location.href = "{{ url_for('kiosk_page') }}";
+    }
+
+    function handleRFIDScan() {
+      const rfidField = document.getElementById("instructorRfidField");
+      const statusLabel = document.getElementById("rfidStatusLabel");
+
+      if (rfidField.value.trim() !== "") {
+        // RFID was scanned — show success message
+        statusLabel.style.display = "inline";
+        statusLabel.textContent = "✅ RFID Scanned Successfully";
+
+        // Optional: briefly highlight the field for visibility
+        rfidField.style.borderColor = "green";
+
+        // Hide the message after 3 seconds
+        setTimeout(() => {
+          statusLabel.style.display = "none";
+          rfidField.style.borderColor = "";
+        }, 3000);
+      }
+    }
+
+    function openModal(id) {
+      document.getElementById(id).style.display = "flex";
+
+      if (id === "manageAccountModal") {
+        fetch("/get_admin_account")
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              document.getElementById("adminFirstName").value = data.first_name || "";
+              document.getElementById("adminLastName").value = data.last_name || "";
+              document.getElementById("adminEmail").value = data.email || "";
+            } else {
+              alert("⚠️ Failed to load account info.");
+            }
+          })
+          .catch(err => console.error("Error fetching admin info:", err));
+      }
+    }
+
+    function saveAdminAccount() {
+      const firstName = document.getElementById("adminFirstName").value.trim();
+      const lastName = document.getElementById("adminLastName").value.trim();
+      const email = document.getElementById("adminEmail").value.trim();
+      const currentPassword = document.getElementById("currentAdminPassword").value;
+      const newPassword = document.getElementById("adminPassword").value;
+      const confirmPassword = document.getElementById("confirmAdminPassword").value;
+
+      if (!firstName || !lastName || !email || !currentPassword) {
+        alert("⚠️ All required fields must be filled.");
+        return;
+      }
+
+      if (newPassword && newPassword !== confirmPassword) {
+        alert("⚠️ New passwords do not match.");
+        return;
+      }
+
+      fetch("/update_admin_account", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("✅ Account details updated successfully!");
+          closeModal("manageAccountModal");
+          document.getElementById("manageAccountForm").reset();
+        } else {
+          alert("❌ " + data.error);
+        }
+      })
+      .catch(err => console.error("Error updating account:", err));
+    }
+// ----------- Highlight card when checkbox is selected ----------------
+    document.addEventListener("DOMContentLoaded", () => {
+      const checkboxes = document.querySelectorAll(".equip-checkbox");
+
+      checkboxes.forEach(cb => {
+        cb.addEventListener("change", () => {
+          const card = cb.closest(".equipment-card");
+          if (cb.checked) {
+            card.classList.add("selected");
+          } else {
+            card.classList.remove("selected");
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

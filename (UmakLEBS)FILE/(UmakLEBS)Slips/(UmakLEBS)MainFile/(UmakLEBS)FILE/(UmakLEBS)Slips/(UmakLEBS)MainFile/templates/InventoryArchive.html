@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Archived Inventory</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='InventoryStyle.css') }}">
+</head>
+<body>
+  <header class="topbar-archive">
+    <button class="btn btn-back" onclick="window.location.href='/inventory'">← Back to Inventory</button>
+    <h1>Recently Deleted Equipment</h1>
+  </header>
+
+  <div class="archive-cards">
+    {% for item in items %}
+    <div class="inventory-card">
+      <div class="card-header">
+        <span class="equip-no">#{{ "%05d"|format(item.item_id) }}</span>
+      </div>
+      <div class="card-image">
+        <img src="{{ url_for('static', filename=item.image_path) }}"
+             alt="{{ item.item_name }}"
+             onerror="this.src='{{ url_for('static', filename='Icons/tool_default.jpg') }}'">
+      </div>
+      <div class="card-body">
+        <h3 class="equip-name">{{ item.item_name }}</h3>
+        <p class="equip-type">{{ item.type }}</p>
+        <p><strong>Quantity:</strong> {{ item.quantity }}</p>
+        <p><strong>Borrowed:</strong> {{ item.borrowed }}</p>
+        <p><strong>Status:</strong> Archived</p>
+
+        <!-- 🟢 Restore Button -->
+        <form action="/restore_item/{{ item.item_id }}" method="POST" onsubmit="return confirm('Restore this item to inventory?')">
+          <button type="submit" class="btn btn-restore">Restore</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</body>
+</html>
