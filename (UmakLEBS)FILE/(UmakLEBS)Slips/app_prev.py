@@ -2403,7 +2403,7 @@ def verification(email):
             return redirect(url_for("verification", email=email))
 
     # GET → Render verification page
-    return render_template("verification.html", email=email)
+    return render_template("Verification.html", email=email)
 
 #route for resending a code in the admin's email
 @app.route('/resend-code', methods=['POST'])
