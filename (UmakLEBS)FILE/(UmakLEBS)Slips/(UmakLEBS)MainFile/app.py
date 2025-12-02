@@ -476,12 +476,29 @@ def create_account():
             ph_time = timezone(timedelta(hours=8))
             now = datetime.now(ph_time).strftime("%Y-%m-%d %H:%M:%S")
 
-            cursor.execute("""
-                INSERT INTO pending_admins (first_name, last_name, email, password, verification_code, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (fname, lname, email, hashed, code, now))
-            
-            conn.commit()
+            try:
+                cursor.execute("""
+                    INSERT INTO pending_admins (first_name, last_name, email, password, verification_code, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (fname, lname, email, hashed, code, now))
+                conn.commit()
+            except Error as e:
+                # Table missing => attempt to initialize DB and retry once
+                if getattr(e, 'errno', None) == 1146 or ('Table' in str(e) and "doesn't exist" in str(e)):
+                    print('⚠️ Table missing during account creation, attempting to initialize DB...')
+                    try:
+                        init_db()
+                        cursor.execute("""
+                            INSERT INTO pending_admins (first_name, last_name, email, password, verification_code, created_at)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (fname, lname, email, hashed, code, now))
+                        conn.commit()
+                    except Exception as e2:
+                        conn.rollback()
+                        raise
+                else:
+                    conn.rollback()
+                    raise
 
             # ✅ Send email
             send_verification_email(email, code)
@@ -516,11 +533,24 @@ def verification(email):
         cursor = conn.cursor()
 
         # Check pending_admins for matching email + code
-        cursor.execute("""
-            SELECT pending_id, first_name, last_name, email, password, verification_code, created_at
-            FROM pending_admins
-            WHERE email = %s AND verification_code = %s
-        """, (email, code))
+        try:
+            cursor.execute("""
+                SELECT pending_id, first_name, last_name, email, password, verification_code, created_at
+                FROM pending_admins
+                WHERE email = %s AND verification_code = %s
+            """, (email, code))
+        except Error as e:
+            if getattr(e, 'errno', None) == 1146 or ('Table' in str(e) and "doesn't exist" in str(e)):
+                print('⚠️ pending_admins table missing, attempting to initialize schema...')
+                init_db()
+                # Try again
+                cursor.execute("""
+                    SELECT pending_id, first_name, last_name, email, password, verification_code, created_at
+                    FROM pending_admins
+                    WHERE email = %s AND verification_code = %s
+                """, (email, code))
+            else:
+                raise
         pending = cursor.fetchone()
 
         if pending:
@@ -3702,11 +3732,6 @@ def kiosk_return_success():
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080)
 
-if __name__ == "__main__":
-    from setup_db import init_db, fill_inventory
-    init_db()
-    fill_inventory()
-    app.run(debug=True)
 
 
 
