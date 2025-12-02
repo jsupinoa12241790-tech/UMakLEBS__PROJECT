@@ -8,7 +8,7 @@ from flask import (
     session, redirect, url_for, jsonify, send_file
 )
 from flask_socketio import SocketIO  # Real-time communication (for notifications, etc.)
-from werkzeug.security import generate_password_hash, check_password_hash  # Secure password hashing
+import bcrypt  # Secure password hashing
 from werkzeug.utils import secure_filename  # For safe file uploads
 from functools import wraps  # Used for login-required decorators
 
@@ -194,7 +194,7 @@ def login_step1():
     if not admin:
         conn.close()
         return jsonify({'success': False, 'error': 'Account not found. Please craete an account.'})
-    if not check_password_hash(admin['password'], password):
+    if not bcrypt.checkpw(password.encode(), admin['password'].encode()):
         conn.close()
         return jsonify({'success': False, 'error': 'Incorrect password.'})
 
