@@ -471,7 +471,7 @@ def create_account():
                 conn.close()
                 return redirect(url_for('login_page'))
 
-            hashed = generate_password_hash(password)
+            hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             code = str(os.urandom(3).hex()).upper()
             ph_time = timezone(timedelta(hours=8))
             now = datetime.now(ph_time).strftime("%Y-%m-%d %H:%M:%S")
