@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMAK-LEBS</title>
+
+    <!-- font link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='Borrowstyle.css') }}">
+
+</head>
+
+<!-- BODY -->
+<body>
+<!-- Top Header -->
+  <header class="topbar">
+      <img src="{{ url_for('static', filename='Icons/Umak.png') }}">
+      <h1>University of Makati - LEBS</h1>
+  </header>
+
+<!-- Main Features of the frame -->
+    <!-- Main Features of the frame -->
+<main class="kiosk-main-content">
+    <h1>Return Items</h1>
+
+    <div class="details-grid">
+        <div class="details-info">
+            <p><b>Transaction #:</b> {{ borrower.transaction_no }}</p>
+            <p><b>Date:</b> {{ borrower.date }}</p>
+            <p><b>Time:</b> {{ borrower.time }}</p>
+            <p><b>Name:</b> {{ borrower.name }}</p>
+            <p><b>College:</b> {{ borrower.department }}</p>
+            <p><b>Course:</b> {{ borrower.course }}</p>
+        </div>
+
+        <div class="borrower-photo">
+            {% if borrower.image %}
+                <img src="{{ url_for('static', filename=borrower.image) }}" alt="Borrower Photo">
+            {% else %}
+                <img src="{{ url_for('static', filename='Icons/Users.png') }}" alt="Borrower Photo">
+            {% endif %}
+        </div>
+    </div>
+
+    <form action="{{ url_for('kiosk_process_return') }}" method="POST">
+        <input type="hidden" name="rfid" value="{{ borrower.rfid }}">
+        <input type="hidden" name="transaction_id" value="{{ borrower.transaction_no }}">
+
+        <table class="return-table">
+          <thead>
+            <tr>
+              <th>Equipment Name</th>
+              <th>Borrowed Quantity</th>
+              <th>Condition Borrowed</th>
+              <th>Returned Quantity</th>
+              <th>Condition Returned</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tbody>
+            {% for item in items %}
+            <tr>
+              <td>
+                <input type="text" name="item_name[]" value="{{ item.item_name }}" readonly class="readOnlyField">
+              </td>
+              <td>
+                <input type="number" name="quantity_borrowed[]" value="{{ item.borrowed_qty }}" readonly class="readOnlyField">
+              </td>
+              <td>
+                <input type="text" name="condition_borrowed[]" value="{{ item.before_condition }}" readonly class="readOnlyField">
+              </td>
+              <td>
+                <input type="number" name="quantity_returned[]" min="1"
+                      max="{{ item.quantity_remaining }}"
+                      value="1">
+              </td>
+              <td>
+                <select name="condition_returned[]">
+                  <option value="">Select Condition</option>
+                  <option value="Brand New">Brand New</option>
+                  <option value="Good Condition">Good Condition</option>
+                  <option value="Functional with Minor Wear">Functional with Minor Wear</option>
+                  <option value="Needs Repair">Needs Repair</option>
+                  <option value="For Replacement / Retired">For Replacement / Retired</option>
+                </select>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="submit-section">
+            <button type="button" class="cancel-btn" onclick="window.location.href='{{ url_for('kiosk_return_scanner') }}'">Cancel</button>
+            <button type="submit" class="submitBtn">Submit Return</button>
+        </div>
+    </form>
+</main>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Submitting return... Please wait for admin confirmation.</div>
+  </div>
+  <!-- Script at the bottom -->
+  <script>
+    // Prevent going back after logout
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = function() {
+          window.history.pushState(null, null, window.location.href);
+        };
+      }
+      // Allow at least one item to be returned
+      document.querySelector("form").addEventListener("submit", function(event) {
+        const qtys = document.querySelectorAll('input[name="quantity_returned[]"]');
+        const conds = document.querySelectorAll('select[name="condition_returned[]"]');
+        
+        let validCount = 0;
+
+        for (let i = 0; i < qtys.length; i++) {
+          const qty = parseInt(qtys[i].value) || 0; // Treat empty as 0
+          const cond = conds[i].value.trim();
+
+          if (qty > 0 && cond) {
+            validCount++;
+          }
+        }
+
+        if (validCount === 0) {
+          event.preventDefault();
+          alert("⚠️ Please return at least one item by filling both quantity and condition.");
+        }
+      });
+  </script>
+</body>
+</html>

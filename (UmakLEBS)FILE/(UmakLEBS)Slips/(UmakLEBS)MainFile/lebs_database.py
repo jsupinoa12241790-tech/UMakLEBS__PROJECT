@@ -1,6 +1,9 @@
+from dotenv import load_dotenv
 import os
+import bcrypt
 import mysql.connector
 from mysql.connector import Error
+load_dotenv()
 
 # -----------------------------------------------------------------
 # DATABASE CONNECTION HELPER
@@ -176,7 +179,18 @@ def init_db():
     cursor.close()
     conn.close()
 
-
+# Check if admin already exists
+cursor.execute("SELECT COUNT(*) FROM admins WHERE email = %s", ("jsupino.a12241790@umak.edu.ph",))
+if cursor.fetchone()[0] == 0:
+    hashed_pw = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
+    cursor.execute("""
+        INSERT INTO admins (first_name, last_name, email, password, is_verified)
+        VALUES (%s, %s, %s, %s, %s)
+    """, ("JS", "Upino", "jsupino.a12241790@umak.edu.ph", hashed_pw, 1))
+    print("✅ Admin account seeded.")
+else:
+    print("ℹ️ Admin account already exists.")
+    
 # -----------------------------------------------------------------
 # PRE-FILL INVENTORY DATA
 # -----------------------------------------------------------------
