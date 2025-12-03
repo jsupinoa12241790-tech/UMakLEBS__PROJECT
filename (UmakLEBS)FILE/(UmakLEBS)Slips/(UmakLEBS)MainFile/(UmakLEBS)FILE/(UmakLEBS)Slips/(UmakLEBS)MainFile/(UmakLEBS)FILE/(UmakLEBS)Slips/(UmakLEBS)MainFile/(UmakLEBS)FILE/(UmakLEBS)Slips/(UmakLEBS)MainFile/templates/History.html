@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMAK-LEBS</title>
+
+    <!-- font link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='historyDesign.css') }}">
+
+</head>
+
+<!-- BODY -->
+<body>
+<!-- Top Header -->
+  <header class="topbar">
+      <img src="{{ url_for('static', filename='Icons/Umak.png') }}">
+      <h1>University of Makati - LEBS</h1>
+  </header>
+
+<!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="profMenu" onclick="showProfile()"> <!-- Profile -->
+      <div class="profIcon">
+        <img src="{{ url_for('static', filename='Icons/Profile.png') }}" alt="Umak Logo">
+      </div>
+      <div id="logoutDropdown" class="logout-dropdown">
+        <a href="{{ url_for('logout') }}" class="menu-item">
+            <img src="{{ url_for('static', filename='Icons/LogOut Icon.png') }}">
+            Log Out
+        </a>
+
+        <div class="divider"></div>
+
+        <button class="menu-item" onclick="openModal('manageAccountModal')">
+            <img src="{{ url_for('static', filename='Icons/Profile.png') }}">
+            Manage Account
+        </button>
+      </div>
+    </div>
+
+    <a href="{{ url_for('dashboard') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Dashboard.png') }}" alt="Dashboard Icon" />
+      </div>
+      <span>Dashboard</span>
+    </a>
+
+    <a href="{{ url_for('borrow_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Borrow.png') }}" alt="Borrow Icon" />
+      </div>
+      <span>Borrow</span>
+    </a>
+
+    <a href="{{ url_for('rfid_scanner_return') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Return.png') }}" alt="Return Icon" />
+      </div>
+      <span>Return</span>
+    </a>
+    
+    <a href="{{ url_for('inventory_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Inventory.png') }}" alt="Inventory Icon" />
+      </div>
+      <span>Inventory</span>
+    </a>
+
+    <a href="{{ url_for('users_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Users.png') }}" alt="Users Icon" />
+      </div>
+      <span>Users</span>
+    </a>
+    
+    <div class="nav-item active" onclick="showSection('history')">
+        <div class="nav-icon">
+          <img src="{{ url_for('static', filename='Icons/History.png') }}" alt="History Icon" />
+        </div>
+        <span>History</span>
+    </div>
+    
+    <a href="{{ url_for('report_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Report.png') }}" alt="Report Icon" />
+      </div>
+      <span>Reports</span>
+    </a>
+
+    <a href="{{ url_for('kiosk_page') }}" target="_blank" class="nav-item" title="Open Kiosk in New Tab">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Kiosk Icon.png') }}" alt="Kiosk Icon" />
+      </div>
+      <span> Kiosk</span>
+    </a>
+  </aside>
+
+<!-- Main Features of the frame -->
+<!-- Main Content -->
+  <main class="mainFeat">
+    <h1 class="dbTitle">History</h1> <!-- Title of the main features -->
+
+    <!-- Content Grid -->
+    <div class="content">
+                <div class="filter-controls">
+                    <input type="date" id="dateFilter" class="filter-input">
+                </div>
+              <!-- History Logs -->
+              <div id="historyLogs" class="history-logs">
+                <!-- check if history is completely empty -->
+                {% if history and history|length > 0 %}
+                  {% for date, records in history.items() %} <!-- check if history has dates, but a specific date has no records -->
+                    <div class="historyDate">{{ date }}</div>
+
+                    {% if records and records|length > 0 %}
+                      {% for record in records %}
+                        <div class="historyEntry">
+                          <div class="historyDet">
+                            <div class="detailsRight">
+                              <span class="historyTime">{{ record.time }}</span>
+                              <span class="historyItem">{{ record.tool }}</span>
+                              <span class="historyName">{{ record.user }}</span>
+                            </div>
+                            <div class="status">
+                              {% if record.status == 'borrowed' %}
+                                <span class="status-badge status-borrowed">Borrowed {{ record.quantity }}</span>
+                              {% elif record.status == 'partial' %}
+                                <span class="status-badge status-partial">
+                                  Returned {{ record.returned_qty }}/{{ record.quantity }}
+                                </span>
+                              {% else %}
+                                <span class="status-badge status-returned">
+                                  Returned all ({{ record.quantity }})
+                                </span>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    {% else %}
+                      <p>No transactions for this date.</p>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <p>No transactions recorded.</p>
+                {% endif %}
+        </div>
+    </div>
+  </main>
+  <!-- End of main faetures -->
+  <!-- Manage Account Modal -->
+    <div class="adminModal" id="manageAccountModal">
+      <div class="admin-content">
+        <div class="modal-header">
+          <h2>Manage Account</h2>
+          <button class="close-btn" onclick="closeModal('manageAccountModal')">&times;</button>
+        </div>
+
+        <form id="manageAccountForm" onsubmit="event.preventDefault(); saveAdminAccount();">
+          <div class="form-group">
+            <label for="adminFirstName">First Name</label>
+            <input type="text" id="adminFirstName" class="form-input" placeholder="Enter your first name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminLastName">Last Name</label>
+            <input type="text" id="adminLastName" class="form-input" placeholder="Enter your last name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminEmail">Email</label>
+            <input type="email" id="adminEmail" class="form-input" placeholder="Enter your email" required>
+          </div>
+
+          <hr style="margin: 10px 0;">
+
+          <div class="form-group">
+            <label for="currentAdminPassword">Current Password</label>
+            <input type="password" id="currentAdminPassword" class="form-input" placeholder="Enter current password" required>
+          </div>
+
+          <div class="form-group">
+            <label for="adminPassword">New Password</label>
+            <input type="password" id="adminPassword" class="form-input" placeholder="Leave blank to keep current password">
+          </div>
+
+          <div class="form-group">
+            <label for="confirmAdminPassword">Confirm New Password</label>
+            <input type="password" id="confirmAdminPassword" class="form-input" placeholder="Confirm new password">
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-cancel" onclick="closeModal('manageAccountModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+<!-- Script at the bottom -->
+<script>
+    document.getElementById("dateFilter").addEventListener("change", function() {
+        const selectedDate = this.value; // format: YYYY-MM-DD
+        window.location.href = "/history?date=" + selectedDate;
+    });
+    // Log Out Script
+    function showProfile() {
+      const dropdown = document.getElementById("logoutDropdown");
+      // Toggle dropdown visibility
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    }
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById("logoutDropdown");
+      const profile = document.querySelector('.profMenu');
+      if (!dropdown.contains(event.target) && !profile.contains(event.target)) {
+        dropdown.style.display = "none";
+      }
+    });
+
+    // Prevent going back after logout
+    if (window.history && window.history.pushState) {
+      window.history.pushState(null, null, window.location.href);
+      window.onpopstate = function() {
+        window.history.pushState(null, null, window.location.href);
+      };
+    }
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
+    function openModal(id) {
+      document.getElementById(id).style.display = "flex";
+
+      if (id === "manageAccountModal") {
+        fetch("/get_admin_account")
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              document.getElementById("adminFirstName").value = data.first_name || "";
+              document.getElementById("adminLastName").value = data.last_name || "";
+              document.getElementById("adminEmail").value = data.email || "";
+            } else {
+              alert("⚠️ Failed to load account info.");
+            }
+          })
+          .catch(err => console.error("Error fetching admin info:", err));
+      }
+    }
+
+    function saveAdminAccount() {
+      const firstName = document.getElementById("adminFirstName").value.trim();
+      const lastName = document.getElementById("adminLastName").value.trim();
+      const email = document.getElementById("adminEmail").value.trim();
+      const currentPassword = document.getElementById("currentAdminPassword").value;
+      const newPassword = document.getElementById("adminPassword").value;
+      const confirmPassword = document.getElementById("confirmAdminPassword").value;
+
+      if (!firstName || !lastName || !email || !currentPassword) {
+        alert("⚠️ All required fields must be filled.");
+        return;
+      }
+
+      if (newPassword && newPassword !== confirmPassword) {
+        alert("⚠️ New passwords do not match.");
+        return;
+      }
+
+      fetch("/update_admin_account", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("✅ Account details updated successfully!");
+          closeModal("manageAccountModal");
+          document.getElementById("manageAccountForm").reset();
+        } else {
+          alert("❌ " + data.error);
+        }
+      })
+      .catch(err => console.error("Error updating account:", err));
+    }
+</script>
+</body>
+</html>

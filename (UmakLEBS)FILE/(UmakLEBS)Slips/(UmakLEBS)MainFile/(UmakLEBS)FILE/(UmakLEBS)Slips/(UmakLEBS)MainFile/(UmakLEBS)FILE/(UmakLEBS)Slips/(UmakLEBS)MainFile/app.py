@@ -135,7 +135,7 @@ def login_page():
         conn.close()
 
         # Check credentials
-        if not user or not check_password_hash(user[1], password):
+        if not user or not bcrypt.checkpw(password.encode('utf-8'), user[1].encode('utf-8')):
             flash("❌ Invalid credentials", "error")
             return redirect(url_for("login_page"))
 
@@ -2844,7 +2844,7 @@ def update_admin_account():
     cursor = conn.cursor()
 
     # Use %s instead of ? for MySQL
-    cursor.execute("SELECT password FROM admin WHERE admin_id = %s", (session['admin_id'],))
+    cursor.execute("SELECT password FROM admins WHERE admin_id = %s", (session['admin_id'],))
     admin = cursor.fetchone()
 
     if not admin:
@@ -2852,19 +2852,19 @@ def update_admin_account():
         return jsonify(success=False, error="Admin not found.")
 
     # Verify current password
-    if not check_password_hash(admin[0], current_password):
+    if not bcrypt.checkpw(current_password.encode('utf-8'), admin[0].encode('utf-8')):
         conn.close()
         return jsonify(success=False, error="Incorrect current password.")
 
     # Update information
     if new_password:
-        hashed_pw = generate_password_hash(new_password)
+        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         cursor.execute("""
-            UPDATE admin SET name=%s, email=%s, password=%s WHERE admin_id=%s
+            UPDATE admins SET name=%s, email=%s, password=%s WHERE admin_id=%s
         """, (name, email, hashed_pw, session['admin_id']))
     else:
         cursor.execute("""
-            UPDATE admin SET name=%s, email=%s WHERE admin_id=%s
+            UPDATE admins SET name=%s, email=%s WHERE admin_id=%s
         """, (name, email, session['admin_id']))
 
     conn.commit()
@@ -2882,7 +2882,7 @@ def send_forgot_code():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT email FROM admin WHERE email=%s", (email,))
+    cursor.execute("SELECT email FROM admins WHERE email=%s", (email,))
     admin = cursor.fetchone()
     conn.close()
 
@@ -2907,15 +2907,15 @@ def reset_password():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT verification_code FROM admin WHERE email=%s", (email,))
+    cursor.execute("SELECT verification_code FROM admins WHERE email=%s", (email,))
     admin = cursor.fetchone()
 
     if not admin or admin[0] != code:
         conn.close()
         return jsonify(success=False, error="Invalid or expired code")
 
-    hashed_pw = generate_password_hash(new_password)
-    cursor.execute("UPDATE admin SET password=%s, verification_code=NULL WHERE email=%s", (hashed_pw, email))
+    hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    cursor.execute("UPDATE admins SET password=%s, verification_code=NULL WHERE email=%s", (hashed_pw, email))
     conn.commit()
     conn.close()
     return jsonify(success=True)
@@ -2926,7 +2926,7 @@ def reset_password():
 def save_verification_code(email, code):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE admin SET verification_code=%s WHERE email=%s", (code, email))
+    cursor.execute("UPDATE admins SET verification_code=%s WHERE email=%s", (code, email))
     conn.commit()
     conn.close()
 # -------------------------------------------------------------------------------------------------------
@@ -3702,6 +3702,11 @@ def kiosk_return_success():
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080)
 
+if __name__ == "__main__":
+    from setup_db import init_db, fill_inventory
+    init_db()
+    fill_inventory()
+    app.run(debug=True)
 
 
 

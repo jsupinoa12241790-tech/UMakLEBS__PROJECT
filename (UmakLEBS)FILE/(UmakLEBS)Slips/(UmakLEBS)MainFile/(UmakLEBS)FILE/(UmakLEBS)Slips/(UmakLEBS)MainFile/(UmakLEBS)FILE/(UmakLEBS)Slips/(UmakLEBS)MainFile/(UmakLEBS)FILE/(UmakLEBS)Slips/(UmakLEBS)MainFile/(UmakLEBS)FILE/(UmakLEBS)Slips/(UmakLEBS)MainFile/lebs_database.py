@@ -1,9 +1,6 @@
-from dotenv import load_dotenv
 import os
-import bcrypt
 import mysql.connector
 from mysql.connector import Error
-load_dotenv()
 
 # -----------------------------------------------------------------
 # DATABASE CONNECTION HELPER
@@ -95,7 +92,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS transactions (
             borrow_id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
-            admin_id INT,
+            admin_id INT NOT NULL,
             instructor_id INT NOT NULL,
             instructor_rfid VARCHAR(50) NOT NULL,
             subject VARCHAR(100) NOT NULL,
@@ -174,21 +171,6 @@ def init_db():
             archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """) 
-    # -----------------------------------------------------------------
-    # Insert an initial admin account if not exists (seed)
-    try:
-        cursor.execute("SELECT COUNT(*) FROM admins WHERE email = %s", ("jsupino.a12241790@umak.edu.ph",))
-        if cursor.fetchone()[0] == 0:
-            hashed_pw = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
-            cursor.execute("""
-                INSERT INTO admins (first_name, last_name, email, password, is_verified)
-                VALUES (%s, %s, %s, %s, %s)
-                """, ("JS", "Upino", "jsupino.a12241790@umak.edu.ph", hashed_pw, 1))
-            print("✅ Admin account seeded.")
-        else:
-            print("🔒 Admin account already exists.")
-    except Exception as e:
-        print(f"❌ Failed to seed admin: {e}")
 
     conn.commit()
     cursor.close()

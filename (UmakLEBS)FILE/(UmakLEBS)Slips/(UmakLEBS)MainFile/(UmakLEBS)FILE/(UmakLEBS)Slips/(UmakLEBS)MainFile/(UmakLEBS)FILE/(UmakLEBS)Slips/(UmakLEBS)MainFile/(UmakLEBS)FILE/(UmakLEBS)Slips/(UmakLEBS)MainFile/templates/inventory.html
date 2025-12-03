@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory System</title>
+
+    <!-- font link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='InventoryStyle.css') }}">
+
+</head>
+<body>
+<!-- Top Header -->
+  <header class="topbar">
+      <img src="{{ url_for('static', filename='Icons/Umak.png') }}">
+      <h1>University of Makati - LEBS</h1>
+  </header>
+
+<!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="profMenu" onclick="showProfile()"> <!-- Profile -->
+      <div class="profIcon">
+      <img src="{{ url_for('static', filename='Icons/Profile.png') }}" alt="Umak Logo">
+      </div>
+      <div id="logoutDropdown" class="logout-dropdown">
+        <a href="{{ url_for('logout') }}" class="menu-item">
+            <img src="{{ url_for('static', filename='Icons/LogOut Icon.png') }}">
+            Log Out
+        </a>
+
+        <div class="divider"></div>
+
+        <button class="menu-item" onclick="openModal('manageAccountModal')">
+            <img src="{{ url_for('static', filename='Icons/Profile.png') }}">
+            Manage Account
+        </button>
+      </div>
+    </div>
+
+    <a href="{{ url_for('dashboard') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Dashboard.png') }}" alt="Dashboard Icon" />
+      </div>
+      <span>Dashboard</span>
+    </a>
+
+    <a href="{{ url_for('borrow_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Borrow.png') }}" alt="Borrow Icon" />
+      </div>
+      <span>Borrow</span>
+    </a>
+
+    <a href="{{ url_for('rfid_scanner_return') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Return.png') }}" alt="Return Icon" />
+      </div>
+      <span>Return</span>
+    </a>
+
+    <div class="nav-item active" onclick="showSection('inventory_page')">
+        <div class="nav-icon">
+          <img src="{{ url_for('static', filename='Icons/Inventory.png') }}" alt="Inventory Icon" />
+        </div>
+        <span>Inventory</span>
+    </div>
+
+    <a href="{{ url_for('users_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Users.png') }}" alt="Users Icon" />
+      </div>
+      <span>Users</span>
+    </a>
+
+    <a href="{{ url_for('history_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/History.png') }}" alt="History Icon" />
+      </div>
+      <span>History</span>
+    </a>
+
+    <a href="{{ url_for('report_page') }}" class="nav-item">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Report.png') }}" alt="Report Icon" />
+      </div>
+      <span>Reports</span>
+    </a>
+
+    <a href="{{ url_for('kiosk_page') }}" target="_blank" class="nav-item" title="Open Kiosk in New Tab">
+      <div class="nav-icon">
+        <img src="{{ url_for('static', filename='Icons/Kiosk Icon.png') }}" alt="Kiosk Icon" />
+      </div>
+      <span> Kiosk</span>
+    </a>
+  </aside>
+
+  <div class="main-content">
+    <h1>Inventory</h1>
+    <div class="table-container">
+      <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" placeholder="Search for equipment or Equipment No..." id="searchInput" oninput="filterEquipment()">
+          <button class="btn btn-archive" onclick="viewArchive()">Recently deleted</button>
+        </div>
+      <!-- Filter/Sort Controls -->
+      <div class="table-filters">
+        <div filter-cont>
+          <label>Sort By:</label>
+          <select class="filter-select" id="inventorySort" onchange="sortInventory(this.value)">
+            <option value="" selected disabled>-- Select Sort --</option>
+            <option value="recent">Recent Added</option>
+            <option value="mostBorrowed">Most Borrowed</option>
+            <option value="mostQuantity">Most Quantity</option>
+            <option value="name">Alphabetical Name</option>
+          </select>
+        </div>
+
+
+        <div filter-type>
+          <label>Filter Type:</label>
+          <select class="itemTypeFilter" id="inventoryType" onchange="filterEquipment()">
+            <option value="all">All Types</option>
+            <option>Hand Tools</option>
+            <option>Power Tools</option>
+            <option>Measuring & Testing Instruments</option>
+            <option>Cutting Tools</option>
+            <option>Machinery & Heavy Equipment</option>
+            <option>Safety Equipment</option>
+            <option>Storage & Supporting Equipment</option>
+          </select>
+        </div>
+      </div>
+
+      
+<div class="table-actions">
+  <button class="btn btn-add" onclick="addRow()">Add</button>
+  <button class="btn btn-edit" onclick="editRow()">Edit</button>
+  <button class="btn btn-delete" onclick="deleteSelectedEquipment()">Delete</button>
+  <button class="btn btn-add" onclick="refreshTable()">Refresh</button>
+
+   <!-- Untick Button at the red spot -->
+    <button id="untickBtn" class="icon-btn" title="Untick All" onclick="untickAll()">✖</button>
+</div>
+      <div id="inventoryCards" class="inventory-cards">
+        {% for item in items %}
+        <div class="inventory-card" 
+            data-id="{{ item.item_id }}" 
+            data-qty="{{ item.quantity }}" 
+            data-borrowed="{{ item.borrowed }}">
+          <div class="card-header">
+            <input type="checkbox" class="item-checkbox" data-id="{{ item.item_id }}">
+            <span class="equip-no">#{{ "%05d"|format(item.item_id) }}</span>
+          </div>
+
+          <div class="card-image">
+            <img src="{{ url_for('static', filename=item.image_path) }}" 
+            alt="{{ item.item_name }}"
+            onerror="this.src='{{ url_for('static', filename='Icons/tool_default.jpg') }}'">
+          </div>
+
+          <div class="card-body">
+            <h3 class="equip-name">{{ item.item_name }}</h3>
+            <p class="equip-type">{{ item.type }}</p>
+            <p><strong>Quantity:</strong> {{ item.quantity }}</p>
+            <p><strong>On Borrowed:</strong> {{ item.borrowed }}</p>
+            <button class="btn {{ 'btn-available' if item.status == 'Available' else 'btn-unavailable' }}">
+              {{ item.status }}
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Equipment Popup -->
+  <div id="addRowPopup" class="popup-overlay">
+    <div class="popup">
+      <h2 id="popupTitle">Add Equipment</h2>
+
+      <label for="equipName">Equipment Name:</label>
+      <input type="text" id="equipName" placeholder="Enter equipment name">
+
+      <label for="equipType">Type:</label>
+      <select id="equipType">
+        <option>Hand Tools</option>
+        <option>Power Tools</option>
+        <option>Measuring & Testing Instruments</option>
+        <option>Cutting Tools</option>
+        <option>Machinery & Heavy Equipment</option>
+        <option>Safety Equipment</option>
+        <option>Storage & Supporting Equipment</option>
+      </select>
+
+      <label for="equipQty">Quantity:</label>
+      <input type="number" id="equipQty" min="0" placeholder="Enter total quantity">
+
+      <label for="equipBorrowed">On Borrowed:</label>
+      <input type="number" id="equipBorrowed" min="0" placeholder="Enter borrowed quantity">
+
+      <label for="equipStatus">Status:</label>
+      <select id="equipStatus">
+        <option value="Available">Available</option>
+        <option value="Unavailable">Unavailable</option>
+      </select>
+
+      <label for="equipImage">Item Image:</label>
+      <input type="file" id="equipImage" accept="image/*">
+
+      <div style="text-align: right; margin-top: 20px;">
+        <button class="btn btn-add" onclick="saveRow()">Save</button>
+        <button class="btn btn-delete" onclick="closePopup()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Popups -->
+  <div id="rowCreatedPopup"></div>
+  <div id="rowEditedPopup"></div>
+  <div id="rowDeletedPopup"></div>
+
+<!-- Edit Confirmation Popup -->
+<div id="editConfirmPopup" class="popup-overlay confirmation">
+  <div class="popup">
+    <h2>Confirm Edit</h2>
+    <p>Are you sure you want to apply changes to this equipment?</p>
+    <button class="btn-confirm" onclick="confirmEdit()">Yes</button>
+    <button class="btn-cancel" onclick="closeEditPopup()">No</button>
+  </div>
+</div>
+
+
+<!-- Delete Confirmation Popup -->
+<div id="deleteConfirmPopup" class="popup-overlay confirmation">
+  <div class="popup">
+    <h2>Confirm Deletion</h2>
+    <p>Are you sure you want to delete the selected equipment?</p>
+    <button class="btn-confirm" onclick="confirmDelete()">Delete</button>
+    <button class="btn-cancel" onclick="closeDeletePopup()">Cancel</button>
+  </div>
+</div>
+
+  <script>
+    let editingId = null;
+    let pendingSaveData = null;
+    const searchInput = document.getElementById("searchInput");
+
+    function showPopup(popupId, message) {
+      const popup = document.getElementById(popupId);
+      popup.textContent = message;
+      popup.style.display = "block";
+      setTimeout(() => popup.style.display = "none", 2000);
+    }
+
+    function viewArchive() {
+      window.location.href = "/view_archive";
+    }
+
+    function addRow() {
+      editingId = null;
+      document.getElementById("popupTitle").textContent = "Add Equipment";
+      document.getElementById("equipName").value = "";
+      document.getElementById("equipType").value = "Hand Tools";
+      document.getElementById("equipQty").value = "";
+      document.getElementById("equipBorrowed").value = "";
+      document.getElementById("equipStatus").value = "Available";
+      document.getElementById("addRowPopup").style.display = "flex";
+    }
+    function closePopup() { document.getElementById("addRowPopup").style.display = "none"; }
+
+    function saveRow() {
+      const name = document.getElementById("equipName").value.trim();
+      const type = document.getElementById("equipType").value;
+      const qty = parseInt(document.getElementById("equipQty").value, 10);
+      const borrowed = parseInt(document.getElementById("equipBorrowed").value, 10);
+      let status = document.getElementById("equipStatus").value;
+
+      if (!name || isNaN(qty)) { alert("Please fill in required fields."); return; }
+      if (isNaN(borrowed)) { alert("Please enter a valid borrowed number."); return; }
+      if (borrowed > qty) { alert("Borrowed items cannot be greater than total quantity."); return; }
+
+      status = (borrowed === qty) ? "Unavailable" : "Available";
+
+      if (editingId) {
+        pendingSaveData = { name, type, qty, borrowed, status };
+        document.getElementById("editConfirmPopup").style.display = "flex";
+        return;
+      }
+
+      submitSave({ name, type, qty, borrowed, status });
+    }
+
+    function confirmEdit() {
+      if (!pendingSaveData) return;
+      submitSave(pendingSaveData);
+      pendingSaveData = null;
+      closeEditPopup();
+    }
+    function closeEditPopup() { pendingSaveData = null; document.getElementById("editConfirmPopup").style.display = "none"; }
+
+    function submitSave(data) {
+      const url = editingId ? "/edit" : "/add";
+      const formData = new FormData();
+
+      if (editingId) formData.append("id", editingId);
+      formData.append("name", data.name);
+      formData.append("type", data.type);
+      formData.append("quantity", data.qty);
+      formData.append("borrowed", data.borrowed);
+      formData.append("status", data.status);
+
+      // Handle image upload
+      const imageFile = document.getElementById("equipImage").files[0];
+      if (imageFile) formData.append("image", imageFile);
+
+      fetch(url, {
+        method: "POST",
+        body: formData
+      })
+      .then(async response => {
+        const text = await response.text();
+        if (!response.ok) {
+          console.error("Save failed", response.status, text);
+          throw new Error(text || "Failed to save row");
+        }
+        console.debug("Save succeeded", response.status, text);
+        return text;
+      })
+      .then(() => {
+        showPopup(editingId ? "rowEditedPopup" : "rowCreatedPopup", 
+          `Equipment "${data.name}" ${editingId ? "edited" : "added"}!`);
+        closePopup();
+        setTimeout(() => location.reload(), 800);
+      })
+      .catch(err => alert(err.message));
+    }
+
+    let rowsToDelete = [];
+    function editRow() {
+      // Select all checked checkboxes in inventory cards
+      const checkboxes = document.querySelectorAll(".inventory-card input[type='checkbox']:checked");
+      if (checkboxes.length !== 1) {
+        alert("Please select exactly one equipment card to edit.");
+        return;
+      }
+
+      // Get the selected card
+      const card = checkboxes[0].closest(".inventory-card");
+      editingId = card.dataset.id;
+
+      // Extract info from card
+      const name = card.querySelector(".equip-name").textContent.trim();
+      const type = card.querySelector(".equip-type").textContent.trim();
+      const qtyText = card.querySelector("p:nth-of-type(1)").textContent.replace("Quantity:", "").trim();
+      const borrowedText = card.querySelector("p:nth-of-type(2)").textContent.replace("On Borrowed:", "").trim();
+      const statusButton = card.querySelector("button");
+
+      // Fill popup fields
+      document.getElementById("popupTitle").textContent = "Edit Equipment";
+      document.getElementById("equipName").value = name;
+      document.getElementById("equipType").value = type;
+      document.getElementById("equipQty").value = qtyText;
+      document.getElementById("equipBorrowed").value = borrowedText;
+
+      const statusText = statusButton.textContent.trim().toLowerCase();
+      const normalizedStatus = statusText.includes("unavailable") ? "Unavailable" : "Available";
+      document.getElementById("equipStatus").value = normalizedStatus;
+
+      // Open popup
+      document.getElementById("addRowPopup").style.display = "flex";
+    }
+
+    function toggleStatus(button) {
+      const row = button.closest("tr");
+      const qty = parseInt(row.dataset.qty, 10);
+      const borrowed = parseInt(row.dataset.borrowed, 10);
+
+      if (borrowed >= qty) {
+        button.classList.remove("btn-available");
+        button.classList.add("btn-unavailable");
+        button.textContent = "Unavailable";
+      } else {
+        const availableCount = qty - borrowed;
+        button.classList.remove("btn-unavailable");
+        button.classList.add("btn-available");
+        button.textContent = `Available (${availableCount})`;
+      }
+    }
+
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('btn-available') || e.target.classList.contains('btn-unavailable')) {
+        toggleStatus(e.target);
+      }
+    });
+
+    function updateBorrowAndStatus() {
+      const qty = parseInt(document.getElementById("equipQty").value, 10);
+      const borrowedField = document.getElementById("equipBorrowed");
+      const statusField = document.getElementById("equipStatus");
+      const borrowed = parseInt(borrowedField.value, 10);
+      if (!isNaN(qty)) {
+        borrowedField.max = qty;
+        if (!isNaN(borrowed) && borrowed > qty) borrowedField.value = qty;
+        statusField.value = (!isNaN(borrowed) && borrowed === qty) ? "Unavailable" : "Available";
+      }
+    }
+    document.getElementById("equipQty").addEventListener("input", updateBorrowAndStatus);
+    document.getElementById("equipBorrowed").addEventListener("input", updateBorrowAndStatus);
+
+    window.onload = () => {
+      document.querySelectorAll("#inventoryTable tbody tr").forEach(row => {
+        const qty = parseInt(row.dataset.qty, 10);
+        const borrowed = parseInt(row.dataset.borrowed, 10);
+        const button = row.querySelector("button");
+
+        if (borrowed >= qty) {
+          button.classList.remove("btn-available");
+          button.classList.add("btn-unavailable");
+          button.textContent = "Unavailable";
+        } else {
+          const availableCount = qty - borrowed;
+          button.classList.remove("btn-unavailable");
+          button.classList.add("btn-available");
+          button.textContent = `Available (${availableCount})`;
+        }
+      });
+    };
+
+    // 🔍 Combined filter for search and type
+    function filterEquipment() {
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const typeFilter = document.getElementById("inventoryType").value.toLowerCase();
+      const cards = document.querySelectorAll(".inventory-card");
+
+      cards.forEach(card => {
+        const name = card.querySelector(".equip-name").textContent.toLowerCase();
+        const type = card.querySelector(".equip-type").textContent.toLowerCase();
+
+        const matchesSearch = name.includes(search) || type.includes(search);
+        const matchesType = (typeFilter === "all" || type === typeFilter);
+
+        card.style.display = (matchesSearch && matchesType) ? "flex" : "none";
+      });
+    }
+
+    // 📊 Sorting function
+    function sortInventory(criteria) {
+      const container = document.querySelector(".inventory-cards");
+      const cards = Array.from(container.querySelectorAll(".inventory-card"));
+
+      cards.sort((a, b) => {
+        if (criteria === "name") {
+          return a.querySelector(".equip-name").textContent.localeCompare(
+            b.querySelector(".equip-name").textContent
+          );
+        } 
+        else if (criteria === "mostQuantity") {
+          return parseInt(b.dataset.qty) - parseInt(a.dataset.qty);
+        } 
+        else if (criteria === "mostBorrowed") {
+          return parseInt(b.dataset.borrowed) - parseInt(a.dataset.borrowed);
+        } 
+        else if (criteria === "recent") {
+          // ✅ Sort newest first based on item_id
+          return parseInt(b.dataset.id) - parseInt(a.dataset.id);
+        }
+        return 0;
+      });
+
+      // Re-append sorted cards to container
+      cards.forEach(card => container.appendChild(card));
+    }
+
+    // 🧩 FILTER BY TYPE DROPDOWN
+    function filterByType() {
+      const typeFilter = document.getElementById("inventoryType").value.toLowerCase();
+      const cards = document.querySelectorAll(".inventory-card");
+
+      cards.forEach(card => {
+        const type = card.querySelector(".equip-type").textContent.toLowerCase();
+        card.style.display = (typeFilter === "" || type === typeFilter) ? "flex" : "none";
+      });
+    }
+
+    // 🔁 REFRESH INVENTORY LIST (optional if you have a backend reload)
+    function refreshInventory() {
+      location.reload(); // simplest approach
+    }
+
+    // 🧩 SELECTED CARD CHECKBOX (for edit/delete)
+    function getSelectedEquipmentIds() {
+      const selected = [];
+      document.querySelectorAll(".inventory-card input[type='checkbox']:checked").forEach(chk => {
+        selected.push(chk.dataset.id);
+      });
+      return selected;
+    }
+
+    function deleteSelectedEquipment() {
+      const selectedIds = getSelectedEquipmentIds();
+      if (selectedIds.length === 0) {
+        alert("Please select at least one item to delete.");
+        return;
+      }
+
+      if (!confirm("Are you sure you want to delete selected equipment(s)?")) return;
+
+      fetch("/archive_equipment", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ ids: selectedIds })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("✅ Equipment moved to archive successfully!");
+          location.reload();
+        } else {
+          alert("❌ Error archiving equipment: " + data.error);
+        }
+      })
+      .catch(err => console.error("Error:", err));
+    }
+
+    function refreshTable() {
+      location.reload();
+    }
+
+    function untickAll() {
+      // Untick all checkboxes in the table body
+      document.querySelectorAll("#inventoryTable tbody input[type='checkbox']").forEach(cb => {
+        cb.checked = false;
+      });
+
+      // Also untick the header checkbox if it exists
+      const selectAll = document.querySelector("#inventoryTable thead input[type='checkbox']");
+      if (selectAll) selectAll.checked = false;
+    }
+    // Log Out Script
+    function showProfile() {
+      const dropdown = document.getElementById("logoutDropdown");
+      // Toggle dropdown visibility
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    }
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById("logoutDropdown");
+      const profile = document.querySelector('.profMenu');
+      if (!dropdown.contains(event.target) && !profile.contains(event.target)) {
+        dropdown.style.display = "none";
+      }
+    });
+
+    // Prevent going back after logout
+    if (window.history && window.history.pushState) {
+      window.history.pushState(null, null, window.location.href);
+      window.onpopstate = function() {
+        window.history.pushState(null, null, window.location.href);
+      };
+    }
+    function closeModal(id) {
+          document.getElementById(id).style.display = "none";
+        }
+    function openModal(id) {
+        document.getElementById(id).style.display = "flex";
+
+        if (id === "manageAccountModal") {
+          fetch("/get_admin_account")
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                document.getElementById("adminFirstName").value = data.first_name || "";
+                document.getElementById("adminLastName").value = data.last_name || "";
+                document.getElementById("adminEmail").value = data.email || "";
+              } else {
+                alert("⚠️ Failed to load account info.");
+              }
+            })
+            .catch(err => console.error("Error fetching admin info:", err));
+        }
+      }
+
+      function saveAdminAccount() {
+        const firstName = document.getElementById("adminFirstName").value.trim();
+        const lastName = document.getElementById("adminLastName").value.trim();
+        const email = document.getElementById("adminEmail").value.trim();
+        const currentPassword = document.getElementById("currentAdminPassword").value;
+        const newPassword = document.getElementById("adminPassword").value;
+        const confirmPassword = document.getElementById("confirmAdminPassword").value;
+
+        if (!firstName || !lastName || !email || !currentPassword) {
+          alert("⚠️ All required fields must be filled.");
+          return;
+        }
+
+        if (newPassword && newPassword !== confirmPassword) {
+          alert("⚠️ New passwords do not match.");
+          return;
+        }
+
+        fetch("/update_admin_account", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            current_password: currentPassword,
+            new_password: newPassword
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert("✅ Account details updated successfully!");
+            closeModal("manageAccountModal");
+            document.getElementById("manageAccountForm").reset();
+          } else {
+            alert("❌ " + data.error);
+          }
+        })
+        .catch(err => console.error("Error updating account:", err));
+      }
+  </script>
+    <!-- Manage Account Modal -->
+  <div class="modal" id="manageAccountModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Manage Account</h2>
+        <button class="close-btn" onclick="closeModal('manageAccountModal')">&times;</button>
+      </div>
+
+      <form id="manageAccountForm" onsubmit="event.preventDefault(); saveAdminAccount();">
+        <div class="form-group">
+          <label for="adminFirstName">First Name</label>
+          <input type="text" id="adminFirstName" class="form-input" placeholder="Enter your first name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="adminLastName">Last Name</label>
+          <input type="text" id="adminLastName" class="form-input" placeholder="Enter your last name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="adminEmail">Email</label>
+          <input type="email" id="adminEmail" class="form-input" placeholder="Enter your email" required>
+        </div>
+
+        <hr style="margin: 10px 0;">
+
+        <div class="form-group">
+          <label for="currentAdminPassword">Current Password</label>
+          <input type="password" id="currentAdminPassword" class="form-input" placeholder="Enter current password" required>
+        </div>
+
+        <div class="form-group">
+          <label for="adminPassword">New Password</label>
+          <input type="password" id="adminPassword" class="form-input" placeholder="New passsword">
+        </div>
+
+        <div class="form-group">
+          <label for="confirmAdminPassword">Confirm New Password</label>
+          <input type="password" id="confirmAdminPassword" class="form-input" placeholder="Confirm new password">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" onclick="closeModal('manageAccountModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

@@ -255,10 +255,23 @@ def login_step1():
 
     # Send OTP email
     sent = send_verification_email(email, otp_code)
-    if not sent:
+
+    # Allow returning OTP to frontend when running in sandboxed backends
+    # (use with caution; enable only in non-production environments)
+    email_backend = os.getenv("EMAIL_BACKEND", "").lower()
+    frontend_relay = os.getenv("FRONTEND_RELAY", "").lower() == "true"
+
+    # If sending failed and we are NOT in console/relay mode, report failure
+    if not sent and not (email_backend == "console" or frontend_relay):
         return jsonify({'success': False, 'error': 'Failed to send verification email.'})
 
-    return jsonify({'success': True, 'message': 'OTP sent to your email.'})
+    resp = {'success': True, 'message': 'OTP sent to your email.'}
+    if email_backend == 'console' or frontend_relay:
+        # Include OTP and email so the browser can forward it to an external relay
+        resp['code'] = otp_code
+        resp['email'] = email
+
+    return jsonify(resp)
 
 
 # -----------------------------------------------------------------
@@ -2919,11 +2932,12 @@ def update_admins_account():
 
     # Use %s instead of ? for MySQL
     try:
-        cursor.execute("SELECT password FROM admins WHERE admin_id = %s", (session['admins_id'],))
-    except mysql.connector.errors.ProgrammingError as e:
+        cursor.execute("SELECT password FROM admins WHERE admin_id = %s", (session.get('admins_id'),))
+    except Exception as e:
+        # If schema isn't present or another programming error occurs, attempt to initialize DB and retry
         print(f"⚠️ ProgrammingError in update_admins_account: {e}. Trying to init DB and retry.")
         init_db()
-        cursor.execute("SELECT password FROM admins WHERE admin_id = %s", (session['admins_id'],))
+        cursor.execute("SELECT password FROM admins WHERE admin_id = %s", (session.get('admins_id'),))
     admins = cursor.fetchone()
 
     if not admins:
@@ -2940,11 +2954,11 @@ def update_admins_account():
         hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         cursor.execute("""
             UPDATE admins SET name=%s, email=%s, password=%s WHERE admin_id=%s
-        """, (name, email, hashed_pw, session['admins_id']))
+        """, (name, email, hashed_pw, session.get('admins_id')))
     else:
         cursor.execute("""
             UPDATE admins SET name=%s, email=%s WHERE admin_id=%s
-        """, (name, email, session['admins_id']))
+        """, (name, email, session.get('admins_id')))
 
     conn.commit()
     conn.close()

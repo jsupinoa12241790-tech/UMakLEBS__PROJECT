@@ -24,4 +24,3 @@ gunicorn==21.2.0
 numpy==1.26.4
 matplotlib==3.7.2
 bcrypt
-requests>=2.31.0
